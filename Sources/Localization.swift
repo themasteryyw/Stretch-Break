@@ -185,7 +185,9 @@ private let strings: [L: [AppLanguage: String]] = [
     .dailyGoal:           [.en: "Daily goal: %d", .zh: "每日目標：%d"],
     .askDiscomfortToggle: [.en: "Ask discomfort each time", .zh: "每次都詢問不適度"],
     .sectionAppearance:   [.en: "Appearance", .zh: "外觀"],
-    .appearanceFooter:    [.en: "Applies to the theme color and app icon.", .zh: "套用到主題色與 App 圖示。"],
+    .appearanceFooter:    [
+        .en: "One tap changes both the theme color and the app icon. Peach Fuzz and Mocha Mousse are real Pantone Colors of the Year (2024 / 2025).",
+        .zh: "點一下同時套用主題色與 App 圖示。蜜桃絨、摩卡慕斯皆為真實的 Pantone 年度代表色（2024／2025）。"],
     .sectionLanguage:     [.en: "Language", .zh: "語言"],
     .languageFooter:      [.en: "Switch freely at any time — no restart needed.",
                             .zh: "可隨時自由切換，不需要重新啟動。"],
@@ -201,10 +203,10 @@ private let strings: [L: [AppLanguage: String]] = [
     .rescheduleNotifButton: [.en: "Reschedule notifications", .zh: "重新排定通知"],
     .notifOffOpenSettings:  [.en: "Notifications are off — open Settings", .zh: "通知已關閉 — 前往「設定」開啟"],
 
-    // MARK: Theme names
+    // MARK: Theme names (blush/latte follow real Pantone Colors of the Year)
     .themeTeal:  [.en: "Teal", .zh: "薄荷綠"],
-    .themeBlush: [.en: "Blush", .zh: "粉色"],
-    .themeLatte: [.en: "Latte", .zh: "奶茶色"],
+    .themeBlush: [.en: "Peach Fuzz", .zh: "蜜桃絨"],
+    .themeLatte: [.en: "Mocha Mousse", .zh: "摩卡慕斯"],
 
     // MARK: Onboarding
     .onboard1Title:  [.en: "Sitting compresses the sciatic nerve", .zh: "久坐會壓迫坐骨神經"],

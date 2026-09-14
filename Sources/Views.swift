@@ -12,8 +12,8 @@ enum AppTheme: String, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .teal: .teal
-        case .blush: Color(red: 0.85, green: 0.55, blue: 0.56)   // morandi blush pink
-        case .latte: Color(red: 0.72, green: 0.58, blue: 0.43)   // morandi latte
+        case .blush: Color(red: 1.00, green: 0.745, blue: 0.596)  // Pantone 13-1023 Peach Fuzz (COTY 2024)
+        case .latte: Color(red: 0.643, green: 0.467, blue: 0.392) // Pantone 17-1230 Mocha Mousse (COTY 2025)
         }
     }
 
