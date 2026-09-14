@@ -19,9 +19,9 @@ enum AppTheme: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .teal: "薄荷綠"
-        case .blush: "粉色"
-        case .latte: "奶茶色"
+        case .teal: t(.themeTeal)
+        case .blush: t(.themeBlush)
+        case .latte: t(.themeLatte)
         }
     }
 
@@ -41,16 +41,17 @@ struct RootView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.scenePhase) private var phase
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     var body: some View {
         TabView {
             HomeView()
-                .tabItem { Label("Today", systemImage: "figure.cooldown") }
+                .tabItem { Label(t(.tabToday), systemImage: "figure.cooldown") }
             HistoryView()
-                .tabItem { Label("History", systemImage: "chart.xyaxis.line") }
+                .tabItem { Label(t(.tabHistory), systemImage: "chart.xyaxis.line") }
             SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tabItem { Label(t(.tabSettings), systemImage: "gearshape") }
         }
         .tint(theme)
         .fullScreenCover(isPresented: $model.showOnboarding, onDismiss: {
@@ -83,6 +84,7 @@ struct HomeView: View {
     @Query(sort: \SessionLog.date, order: .reverse) private var logs: [SessionLog]
     @AppStorage("goalPerDay") private var goalPerDay = 8
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     @State private var notifAuthorized = true
@@ -102,7 +104,7 @@ struct HomeView: View {
                             VStack(spacing: 2) {
                                 Text("\(done)/\(goalPerDay)")
                                     .font(.system(size: 44, weight: .bold, design: .rounded))
-                                Text("stand-ups today")
+                                Text(t(.standUpsToday))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
@@ -110,15 +112,15 @@ struct HomeView: View {
 
                     HStack(spacing: 14) {
                         StatCard(icon: "flame.fill", tint: .orange,
-                                 value: "\(streak)", label: "day streak")
+                                 value: "\(streak)", label: t(.dayStreak))
                         StatCard(icon: "clock.fill", tint: theme,
-                                 value: "\(weekMinutes)", label: "min this week")
+                                 value: "\(weekMinutes)", label: t(.minThisWeek))
                     }
 
                     Button {
                         model.pendingStart = true
                     } label: {
-                        Label("Stretch now · 3 min", systemImage: "play.fill")
+                        Label(t(.stretchNowButton), systemImage: "play.fill")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
@@ -129,13 +131,13 @@ struct HomeView: View {
 
                     Group {
                         if !notifAuthorized {
-                            Text("通知未開啟，不會收到休息提醒 — 前往「設定」開啟")
+                            Text(t(.notifOffWarning))
                                 .foregroundStyle(.red)
                         } else if let next {
-                            Text("Next reminder: \(next.formatted(date: .omitted, time: .shortened))")
+                            Text(t(.nextReminder, next.formatted(date: .omitted, time: .shortened)))
                                 .foregroundStyle(.secondary)
                         } else {
-                            Text("Outside reminder hours — adjust in Settings")
+                            Text(t(.outsideReminderHours))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -202,6 +204,7 @@ struct SessionFlowView: View {
     @AppStorage("askPain") private var askPain = true
     @AppStorage("painAreaCursor") private var painAreaCursor = 0
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     @State private var step: Step = .loading
@@ -223,7 +226,12 @@ struct SessionFlowView: View {
     private let maxFails = 4
     private enum Step { case loading, repeatOffer, painBefore, playing, offline, rating, painAfter, reward }
 
-    struct RepeatInfo { let videoID: String; let title: String; let area: String; let score: Int }
+    struct RepeatInfo {
+        let videoID: String; let title: String
+        let area: String        // localized display label
+        let areaKey: String?    // FocusArea.rawValue — stable across a language switch
+        let score: Int
+    }
 
     var body: some View {
         ZStack {
@@ -254,7 +262,7 @@ struct SessionFlowView: View {
     @ViewBuilder private var content: some View {
         switch step {
         case .loading:
-            ProgressView("Getting your stretch ready…")
+            ProgressView(t(.loadingStretch))
 
         case .repeatOffer:
             if let info = repeatInfo {
@@ -264,7 +272,7 @@ struct SessionFlowView: View {
             }
 
         case .painBefore:
-            PainView(title: "How's your \(area.label) right now?", value: $painBefore,
+            PainView(title: t(.painBeforeTitle, area.label), value: $painBefore,
                      submit: { advanceFromPainBefore() },
                      skip: { advanceFromPainBefore() })
 
@@ -293,11 +301,11 @@ struct SessionFlowView: View {
                         Button {
                             rerollVideo()
                         } label: {
-                            Label("Next video", systemImage: "forward.fill")
+                            Label(t(.nextVideoButton), systemImage: "forward.fill")
                         }
                         .buttonStyle(.bordered)
 
-                        Button("Done / end early") { step = .rating }
+                        Button(t(.doneEndEarlyButton)) { step = .rating }
                             .buttonStyle(.borderedProminent).tint(.teal)
                     }
 
@@ -306,7 +314,7 @@ struct SessionFlowView: View {
                             openURL(url)
                         }
                     } label: {
-                        Label("Open in YouTube", systemImage: "arrow.up.forward.app")
+                        Label(t(.openInYouTubeButton), systemImage: "arrow.up.forward.app")
                             .font(.footnote)
                     }
                     .foregroundStyle(.secondary)
@@ -325,7 +333,7 @@ struct SessionFlowView: View {
             }
 
         case .painAfter:
-            PainView(title: "And your \(area.label) now, after stretching?", value: $painAfter,
+            PainView(title: t(.painAfterTitle, area.label), value: $painAfter,
                      submit: { finish() }, skip: { finish() })
 
         case .reward:
@@ -343,7 +351,7 @@ struct SessionFlowView: View {
 
     private func load() async {
         VideoStore.shared.setUserVideos(userVideos.map {
-            StretchVideo(id: $0.videoID, title: $0.title, channel: "Your list",
+            StretchVideo(id: $0.videoID, title: $0.title, channel: t(.channelYourList),
                          durationSec: 240, areas: BodyArea.allCases,
                          intensity: .gentle, source: "user")
         })
@@ -372,17 +380,22 @@ struct SessionFlowView: View {
                                        age: Date().timeIntervalSince(last.date),
                                        isOffline: last.videoID == "offline-routine")
         else { return nil }
+        // `focusArea` is stored as a FocusArea.rawValue (language-independent); resolve it
+        // to today's localized label for display, falling back gracefully if it doesn't match
+        // any known case (e.g. an older log written before this field existed).
+        let key = last.focusArea
+        let displayLabel = key.flatMap { FocusArea(rawValue: $0)?.label } ?? key ?? area.label
         return RepeatInfo(videoID: last.videoID, title: last.videoTitle,
-                          area: last.focusArea ?? area.label, score: score)
+                          area: displayLabel, areaKey: key, score: score)
     }
 
     private func acceptRepeat(_ info: RepeatInfo) {
         // keep the check-in focused on the sore area, not the rotation
-        if let matched = FocusArea.allCases.first(where: { $0.label == info.area }) {
+        if let key = info.areaKey, let matched = FocusArea(rawValue: key) {
             area = matched
         }
         video = pool.first { $0.id == info.videoID }
-            ?? StretchVideo(id: info.videoID, title: info.title, channel: "Repeat",
+            ?? StretchVideo(id: info.videoID, title: info.title, channel: t(.channelRepeat),
                             durationSec: 300, areas: BodyArea.allCases,
                             intensity: .gentle, source: "repeat")
         elapsed = 0
@@ -461,7 +474,7 @@ struct SessionFlowView: View {
             painBefore: askPain ? painBefore : nil,
             painAfter: askPain ? painAfter : nil,
             feelingRaw: feeling?.rawValue,
-            focusArea: askPain ? area.label : nil)
+            focusArea: askPain ? area.rawValue : nil)   // stable across a language switch; resolved to a label on read
         ctx.insert(log)
         try? ctx.save()
         painAreaCursor += 1        // next session asks about the next body area
@@ -513,29 +526,30 @@ struct OfflineRoutineView: View {
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     var body: some View {
         VStack(spacing: 24) {
             if moves.indices.contains(index) {
                 let move = moves[index]
-                Text("Move \(index + 1) / \(moves.count)")
+                Text(t(.moveCounter, index + 1, moves.count))
                     .font(.caption).foregroundStyle(.secondary)
                 Image(systemName: move.symbol)
                     .font(.system(size: 90))
                     .foregroundStyle(theme)
                     .symbolRenderingMode(.hierarchical)
-                Text(move.name).font(.title2.bold()).multilineTextAlignment(.center)
-                Text(move.cue)
+                Text(move.localizedName).font(.title2.bold()).multilineTextAlignment(.center)
+                Text(move.localizedCue)
                     .font(.body).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 Text("\(remaining)s")
                     .font(.system(size: 40, weight: .bold, design: .rounded).monospacedDigit())
                 HStack {
-                    Button("Skip this one") { nextMove() }
+                    Button(t(.skipThisOneButton)) { nextMove() }
                         .buttonStyle(.bordered)
-                    Button("End") { onDone() }
+                    Button(t(.endButton)) { onDone() }
                         .buttonStyle(.borderedProminent).tint(theme)
                 }
             } else {
@@ -583,6 +597,7 @@ struct RepeatOfferView: View {
     let somethingNew: () -> Void
 
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     var body: some View {
@@ -592,10 +607,10 @@ struct RepeatOfferView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(theme)
                 .symbolRenderingMode(.hierarchical)
-            Text("Last time your \(info.area) was \(info.score)/10.")
+            Text(t(.repeatLastTime, info.area, info.score))
                 .font(.title3.bold())
                 .multilineTextAlignment(.center)
-            Text("Want to keep working on it with the same stretch?")
+            Text(t(.repeatQuestion))
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Text(info.title)
@@ -603,9 +618,9 @@ struct RepeatOfferView: View {
                 .lineLimit(2).multilineTextAlignment(.center)
                 .padding(.horizontal)
             Spacer()
-            Button("Repeat it") { repeatIt() }
+            Button(t(.repeatItButton)) { repeatIt() }
                 .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
-            Button("Try something new") { somethingNew() }
+            Button(t(.somethingNewButton)) { somethingNew() }
                 .font(.subheadline).foregroundStyle(.secondary)
         }
         .padding()
@@ -621,12 +636,13 @@ struct RatingView: View {
     let onSubmit: () -> Void
 
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     var body: some View {
         VStack(spacing: 28) {
             Spacer()
-            Text("How was that?").font(.title2.bold())
+            Text(t(.howWasThat)).font(.title2.bold())
 
             HStack(spacing: 18) {
                 ForEach(Feeling.allCases) { f in
@@ -652,10 +668,10 @@ struct RatingView: View {
             }
 
             Spacer()
-            Button("Submit") { onSubmit() }
+            Button(t(.submitButton)) { onSubmit() }
                 .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
                 .disabled(feeling == nil)
-            Button("Skip") { onSubmit() }
+            Button(t(.skipButton)) { onSubmit() }
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .padding()
@@ -692,42 +708,79 @@ struct RewardView: View {
     let onDone: () -> Void
 
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
+    // Cute pop-in / bounce / sparkle-spin animation state.
+    @State private var iconIn = false
+    @State private var iconBounce = false
+    @State private var sparkleSpin = false
+
     private var headline: String {
-        if milestone { "了不起，連續 \(streak) 天了！" }
-        else if today == 1 { "今天的第一次伸展，完成！" }
-        else { "做得很好，給自己一個掌聲" }
+        if milestone { t(.rewardMilestoneHeadline, streak) }
+        else if today == 1 { t(.rewardFirstTodayHeadline) }
+        else { t(.rewardGenericHeadline) }
     }
 
     private var message: String {
-        milestone
-            ? "忙碌的一天裡還記得照顧自己，這份堅持很珍貴。"
-            : "花幾分鐘照顧身體，你值得這樣的休息。"
+        milestone ? t(.rewardMilestoneMessage) : t(.rewardGenericMessage)
     }
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Image(systemName: milestone ? "star.circle.fill" : "checkmark.seal.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(theme)
-                .symbolRenderingMode(.hierarchical)
+
+            ZStack {
+                if !reduceMotion {
+                    ForEach(0..<6, id: \.self) { i in
+                        Image(systemName: "sparkle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(theme.opacity(0.75))
+                            .offset(y: -56)
+                            .rotationEffect(.degrees(Double(i) / 6 * 360 + (sparkleSpin ? 360 : 0)))
+                            .opacity(iconIn ? 1 : 0)
+                    }
+                }
+                Image(systemName: milestone ? "star.circle.fill" : "checkmark.seal.fill")
+                    .font(.system(size: 72))
+                    .foregroundStyle(theme)
+                    .symbolRenderingMode(.hierarchical)
+                    .scaleEffect(iconIn ? (iconBounce ? 1.08 : 1.0) : 0.4)
+                    .rotationEffect(.degrees(iconIn ? 0 : -25))
+            }
+            .frame(height: 96)
+            .onAppear {
+                guard !reduceMotion else { iconIn = true; return }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.55)) { iconIn = true }
+                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true).delay(0.5)) {
+                    iconBounce = true
+                }
+                withAnimation(.linear(duration: 9).repeatForever(autoreverses: false)) {
+                    sparkleSpin = true
+                }
+            }
 
             Text(headline).font(.title2.bold()).multilineTextAlignment(.center)
+                .opacity(iconIn ? 1 : 0)
+                .animation(.easeOut(duration: 0.35).delay(0.1), value: iconIn)
             Text(message)
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
+                .opacity(iconIn ? 1 : 0)
+                .animation(.easeOut(duration: 0.35).delay(0.16), value: iconIn)
 
             HStack(spacing: 28) {
-                RewardStat(value: "\(streak)", label: "連續天數", tint: theme)
-                RewardStat(value: "\(today)", label: "今日完成", tint: theme)
+                RewardStat(value: "\(streak)", label: t(.rewardStreakLabel), tint: theme)
+                RewardStat(value: "\(today)", label: t(.rewardTodayLabel), tint: theme)
             }
             .padding(.top, 8)
+            .opacity(iconIn ? 1 : 0)
+            .animation(.easeOut(duration: 0.35).delay(0.22), value: iconIn)
 
             Spacer()
-            Button("完成") { onDone() }
+            Button(t(.rewardDoneButton)) { onDone() }
                 .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
         }
         .padding()
@@ -758,6 +811,7 @@ struct PainView: View {
     let skip: () -> Void
 
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     var body: some View {
@@ -773,14 +827,14 @@ struct PainView: View {
                 .tint(color)
                 .padding(.horizontal)
             HStack {
-                Text("0 None").font(.caption).foregroundStyle(.secondary)
+                Text(t(.painNone)).font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text("10 Severe").font(.caption).foregroundStyle(.secondary)
+                Text(t(.painSevere)).font(.caption).foregroundStyle(.secondary)
             }.padding(.horizontal)
             Spacer()
-            Button("Submit") { submit() }
+            Button(t(.submitButton)) { submit() }
                 .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
-            Button("Skip") { skip() }
+            Button(t(.skipButton)) { skip() }
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .padding()
@@ -801,6 +855,7 @@ struct PainView: View {
 struct HistoryView: View {
     @Query(sort: \SessionLog.date, order: .reverse) private var logs: [SessionLog]
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     private var dailyCounts: [(day: Date, count: Int)] {
@@ -821,7 +876,7 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Stand-ups per day (last 14 days)") {
+                Section(t(.historyChartTitle)) {
                     Chart(dailyCounts, id: \.day) { item in
                         BarMark(x: .value("Date", item.day, unit: .day),
                                 y: .value("Count", item.count))
@@ -831,7 +886,7 @@ struct HistoryView: View {
                 }
 
                 if painPoints.count >= 2 {
-                    Section("Post-stretch discomfort trend") {
+                    Section(t(.historyPainTrendTitle)) {
                         Chart(painPoints, id: \.date) { p in
                             LineMark(x: .value("Date", p.date),
                                      y: .value("Discomfort", p.pain))
@@ -846,9 +901,9 @@ struct HistoryView: View {
                     }
                 }
 
-                Section("Recent") {
+                Section(t(.historyRecentSection)) {
                     if logs.isEmpty {
-                        Text("No history yet — do your first stretch!")
+                        Text(t(.historyNoLogsYet))
                             .foregroundStyle(.secondary)
                     }
                     ForEach(logs.prefix(40)) { log in
@@ -866,7 +921,7 @@ struct HistoryView: View {
                     }
                 }
             }
-            .navigationTitle("History")
+            .navigationTitle(t(.historyNavTitle))
         }
     }
 }
@@ -884,6 +939,7 @@ struct SettingsView: View {
     @AppStorage("goalPerDay") private var goalPerDay = 8
     @AppStorage("askPain") private var askPain = true
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
 
     @State private var linkText = ""
@@ -898,11 +954,11 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Reminder hours") {
-                    Stepper("Start: \(startHour):00", value: $startHour, in: 0...22)
-                    Stepper("End: \(endHour):00", value: $endHour, in: (startHour + 1)...23)
-                    Picker("Interval", selection: $intervalMin) {
-                        ForEach([30, 45, 60, 90, 120], id: \.self) { Text("\($0) min").tag($0) }
+                Section(t(.sectionReminderHours)) {
+                    Stepper(t(.stepperStart, startHour), value: $startHour, in: 0...22)
+                    Stepper(t(.stepperEnd, endHour), value: $endHour, in: (startHour + 1)...23)
+                    Picker(t(.intervalLabel), selection: $intervalMin) {
+                        ForEach([30, 45, 60, 90, 120], id: \.self) { Text(t(.minUnit, $0)).tag($0) }
                     }
                     HStack {
                         ForEach(1...7, id: \.self) { wd in
@@ -920,9 +976,22 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
 
-                Section("Goal & prompts") {
-                    Stepper("Daily goal: \(goalPerDay)", value: $goalPerDay, in: 3...16)
-                    Toggle("Ask discomfort each time", isOn: $askPain)
+                Section(t(.sectionGoalPrompts)) {
+                    Stepper(t(.dailyGoal, goalPerDay), value: $goalPerDay, in: 3...16)
+                    Toggle(t(.askDiscomfortToggle), isOn: $askPain)
+                }
+
+                Section {
+                    Picker(t(.sectionLanguage), selection: $appLanguageRaw) {
+                        ForEach(AppLanguage.allCases) { lang in
+                            Text(lang.label).tag(lang.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text(t(.sectionLanguage))
+                } footer: {
+                    Text(t(.languageFooter))
                 }
 
                 Section {
@@ -950,17 +1019,17 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                 } header: {
-                    Text("外觀")
+                    Text(t(.sectionAppearance))
                 } footer: {
-                    Text("套用到主題色與 App 圖示。")
+                    Text(t(.appearanceFooter))
                 }
 
                 Section {
                     HStack {
-                        TextField("Paste a YouTube link", text: $linkText)
+                        TextField(t(.pasteYoutubeLinkPlaceholder), text: $linkText)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                        Button("Add") { addLink() }
+                        Button(t(.addButton)) { addLink() }
                             .disabled(YouTubeURL.id(from: linkText) == nil)
                     }
                     ForEach(userVideos) { v in
@@ -971,19 +1040,17 @@ struct SettingsView: View {
                         try? ctx.save()
                     }
                 } header: {
-                    Text("Video sources")
+                    Text(t(.sectionVideoSources))
                 } footer: {
-                    Text(hasAPIKey
-                         ? "YouTube API key set: fetches embeddable 3–5 min stretch videos, rotating by body area and avoiding repeats."
-                         : "No API key: uses the built-in timed routine. Add links above for your own list, or set YTAPIKey in project.yml.")
+                    Text(hasAPIKey ? t(.videoSourcesFooterWithKey) : t(.videoSourcesFooterNoKey))
                 }
 
                 Section {
-                    Button("Reschedule notifications") {
+                    Button(t(.rescheduleNotifButton)) {
                         Task { await NotificationScheduler.reschedule() }
                     }
                     if authDenied {
-                        Button("Notifications are off — open Settings") {
+                        Button(t(.notifOffOpenSettings)) {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
@@ -992,11 +1059,15 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle(t(.settingsNavTitle))
             .onChange(of: startHour) { rescheduleSoon() }
             .onChange(of: endHour) { rescheduleSoon() }
             .onChange(of: intervalMin) { rescheduleSoon() }
             .onChange(of: activeDaysMask) { rescheduleSoon() }
+            .onChange(of: appLanguageRaw) {
+                NotificationScheduler.registerCategory()   // pick up new action-button titles
+                rescheduleSoon()                           // and new prompt strings
+            }
             .task {
                 authDenied = await NotificationScheduler.authStatus() == .denied
             }
@@ -1006,7 +1077,7 @@ struct SettingsView: View {
     private func addLink() {
         guard let id = YouTubeURL.id(from: linkText) else { return }
         if !userVideos.contains(where: { $0.videoID == id }) {
-            ctx.insert(UserVideo(videoID: id, title: "Custom video \(userVideos.count + 1)"))
+            ctx.insert(UserVideo(videoID: id, title: t(.customVideoTitle, userVideos.count + 1)))
             try? ctx.save()
         }
         linkText = ""
@@ -1023,33 +1094,35 @@ struct SettingsView: View {
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("onboarded") private var onboarded = false
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     @State private var page = 0
 
     var body: some View {
         VStack {
             TabView(selection: $page) {
                 OnboardPage(symbol: "figure.seated.side",
-                            title: "Sitting compresses the sciatic nerve",
-                            message: "A 3–5 minute micro-stretch every hour meaningfully lowers lower-back and hip discomfort. This app does one thing: remind you on time and hand you a non-repeating stretch.")
+                            title: t(.onboard1Title),
+                            message: t(.onboard1Message))
                     .tag(0)
                 OnboardPage(symbol: "clock.badge.checkmark",
-                            title: "Set your working hours",
-                            message: "Reminders fire only during the hours and days you pick — silent the rest of the time. Change it anytime in Settings.")
+                            title: t(.onboard2Title),
+                            message: t(.onboard2Message))
                     .tag(1)
                 OnboardPage(symbol: "bell.badge",
-                            title: "Allow notifications",
-                            message: "Everything is scheduled locally on your device. No network, no data leaves your phone.")
+                            title: t(.onboard3Title),
+                            message: t(.onboard3Message))
                     .tag(2)
             }
             .tabViewStyle(.page)
             .indexViewStyle(.page(backgroundDisplayMode: .always))
 
-            Button(page < 2 ? "Next" : "Allow notifications & start") {
+            Button(page < 2 ? t(.nextButton) : t(.allowNotifStartButton)) {
                 if page < 2 {
                     withAnimation { page += 1 }
                 } else {
                     Task {
                         _ = await NotificationScheduler.requestAuth()
+                        NotificationScheduler.registerCategory()
                         await NotificationScheduler.reschedule()
                         onboarded = true
                         dismiss()
@@ -1060,7 +1133,7 @@ struct OnboardingView: View {
             .padding()
 
             if page == 2 {
-                Button("Maybe later") {
+                Button(t(.maybeLaterButton)) {
                     onboarded = true
                     dismiss()
                 }

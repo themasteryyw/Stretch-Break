@@ -1,18 +1,57 @@
 [
-  { "name": "Stand & breathe + shoulder rolls", "symbol": "lungs.fill", "seconds": 30,
-    "cue": "Stand up. Inhale, lift shoulders toward your ears; exhale and drop them fully. Repeat." },
-  { "name": "Standing forward fold", "symbol": "figure.walk", "seconds": 40,
-    "cue": "Soft knees. Hinge at the hips and hang the upper body down. Relax head and neck; feel the hamstrings and low back lengthen." },
-  { "name": "Standing figure-4 (left)", "symbol": "figure.strengthtraining.functional", "seconds": 40,
-    "cue": "Hold a chair. Cross left ankle over right knee, sit the hips back. Feel a stretch deep in the left glute." },
-  { "name": "Standing figure-4 (right)", "symbol": "figure.strengthtraining.functional", "seconds": 40,
-    "cue": "Switch sides. Right ankle over left knee, hips back, keep the spine long — no rounding." },
-  { "name": "Hip-flexor lunge stretch (left)", "symbol": "figure.run", "seconds": 40,
-    "cue": "Big step forward with the left foot into a lunge, back heel lifted, tuck the pelvis slightly. Feel the front of the right hip open." },
-  { "name": "Hip-flexor lunge stretch (right)", "symbol": "figure.run", "seconds": 40,
-    "cue": "Switch sides. Stay tall through the torso, no shrugging, slow your breathing." },
-  { "name": "Standing spinal rotation", "symbol": "arrow.triangle.2.circlepath", "seconds": 30,
-    "cue": "Feet hip-width, arms crossed over the chest. Slowly rotate the torso left and right, letting the eyes follow." },
-  { "name": "Neck side stretch", "symbol": "figure.mind.and.body", "seconds": 30,
-    "cue": "Rest your right hand gently on the left side of the head, ease the head toward the right shoulder, left shoulder down. Switch sides, then return to your desk." }
+  { "key": "shoulder_rolls", "symbol": "lungs.fill", "seconds": 25,
+    "name": { "en": "Stand & breathe + shoulder rolls", "zh": "起身深呼吸＋肩膀轉圈" },
+    "cue": {
+      "en": "Stand up. Inhale, lift shoulders toward your ears; exhale and drop them fully. Repeat.",
+      "zh": "站起來。吸氣時把肩膀往耳朵方向抬高，吐氣時完全放下，重複幾次。" } },
+  { "key": "forward_fold", "symbol": "figure.walk", "seconds": 30,
+    "name": { "en": "Standing forward fold", "zh": "站姿前彎" },
+    "cue": {
+      "en": "Soft knees. Hinge at the hips and hang the upper body down. Relax head and neck; feel the hamstrings and low back lengthen.",
+      "zh": "膝蓋微彎，從髖部前彎，讓上半身自然垂下，放鬆頭頸，感受大腿後側與下背伸展。" } },
+  { "key": "figure4_left", "symbol": "figure.strengthtraining.functional", "seconds": 30,
+    "name": { "en": "Standing figure-4 (left)", "zh": "站姿數字 4 伸展（左）" },
+    "cue": {
+      "en": "Hold a chair. Cross left ankle over right knee, sit the hips back. Feel a stretch deep in the left glute.",
+      "zh": "扶著椅子，左腳踝交叉放在右膝上，臀部向後坐，感受左側臀部深層的伸展。" } },
+  { "key": "figure4_right", "symbol": "figure.strengthtraining.functional", "seconds": 30,
+    "name": { "en": "Standing figure-4 (right)", "zh": "站姿數字 4 伸展（右）" },
+    "cue": {
+      "en": "Switch sides. Right ankle over left knee, hips back, keep the spine long — no rounding.",
+      "zh": "換邊。右腳踝交叉放在左膝上，臀部向後坐，脊椎保持延伸，不要駝背。" } },
+  { "key": "hip_flexor_lunge_left", "symbol": "figure.run", "seconds": 30,
+    "name": { "en": "Hip-flexor lunge stretch (left)", "zh": "弓箭步髖屈肌伸展（左）" },
+    "cue": {
+      "en": "Big step forward with the left foot into a lunge, back heel lifted, tuck the pelvis slightly. Feel the front of the right hip open.",
+      "zh": "左腳向前跨大步呈弓箭步，後腳跟抬起，骨盆微收，感受右髖前側打開。" } },
+  { "key": "hip_flexor_lunge_right", "symbol": "figure.run", "seconds": 30,
+    "name": { "en": "Hip-flexor lunge stretch (right)", "zh": "弓箭步髖屈肌伸展（右）" },
+    "cue": {
+      "en": "Switch sides. Stay tall through the torso, no shrugging, slow your breathing.",
+      "zh": "換邊。上半身保持挺直，肩膀不聳起，呼吸放慢。" } },
+  { "key": "spinal_rotation", "symbol": "arrow.triangle.2.circlepath", "seconds": 20,
+    "name": { "en": "Standing spinal rotation", "zh": "站姿脊椎旋轉" },
+    "cue": {
+      "en": "Feet hip-width, arms crossed over the chest. Slowly rotate the torso left and right, letting the eyes follow.",
+      "zh": "雙腳與髖同寬，雙手抱胸，緩慢左右旋轉上半身，眼睛跟著轉動方向看。" } },
+  { "key": "neck_side_stretch", "symbol": "figure.mind.and.body", "seconds": 20,
+    "name": { "en": "Neck side stretch", "zh": "頸部側伸展" },
+    "cue": {
+      "en": "Rest your right hand gently on the left side of the head, ease the head toward the right shoulder, left shoulder down. Switch sides, then return to your desk.",
+      "zh": "右手輕放在頭部左側，慢慢將頭往右肩靠近，左肩下沉。換邊後再回到座位。" } },
+  { "key": "chest_opener", "symbol": "figure.arms.open", "seconds": 25,
+    "name": { "en": "Doorway chest opener", "zh": "門框式胸口伸展" },
+    "cue": {
+      "en": "Place forearms on a doorframe (or clasp hands behind your back), step forward and open the chest. Feel the stretch across the chest and front shoulders.",
+      "zh": "前臂靠在門框上（或雙手於背後交扣），身體向前傾展開胸口，感受胸部與肩前側的伸展。" } },
+  { "key": "wrist_forearm", "symbol": "hand.raised.fingers.spread.fill", "seconds": 20,
+    "name": { "en": "Wrist & forearm stretch", "zh": "手腕與前臂伸展" },
+    "cue": {
+      "en": "Extend one arm, palm up, gently pull the fingers back with the other hand. Then flip palm down and repeat. Switch arms.",
+      "zh": "一手向前伸直、掌心朝上，另一手輕輕將手指往後扳。再翻掌心朝下重複，換手進行。" } },
+  { "key": "calf_ankle", "symbol": "figure.stair.stepper", "seconds": 25,
+    "name": { "en": "Calf raise + ankle circles", "zh": "小腿提踵＋腳踝繞圈" },
+    "cue": {
+      "en": "Rise onto your toes and lower slowly a few times, then lift one foot and circle the ankle both directions. Switch feet.",
+      "zh": "踮腳尖後緩慢放下，重複幾次；接著抬起一腳，腳踝雙向繞圈，換腳進行。" } }
 ]

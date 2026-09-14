@@ -5,30 +5,38 @@ import SwiftData
 
 enum BodyArea: String, Codable, CaseIterable, Identifiable {
     case piriformis, glutes, hipFlexors, hamstrings, lowerBack, thoracic, neck
+    case shoulders, chest, wristsForearms, quads, calvesAnkles
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .piriformis: "Piriformis"
-        case .glutes:      "Glutes"
-        case .hipFlexors:  "Hip flexors"
-        case .hamstrings:  "Hamstrings"
-        case .lowerBack:   "Lower back"
-        case .thoracic:    "Thoracic spine"
-        case .neck:        "Neck"
+        case .piriformis:     t(.areaPiriformis)
+        case .glutes:         t(.areaGlutes)
+        case .hipFlexors:     t(.areaHipFlexors)
+        case .hamstrings:     t(.areaHamstrings)
+        case .lowerBack:      t(.areaLowerBack)
+        case .thoracic:       t(.areaThoracic)
+        case .neck:           t(.areaNeck)
+        case .shoulders:      t(.areaShoulders)
+        case .chest:          t(.areaChest)
+        case .wristsForearms: t(.areaWristsForearms)
+        case .quads:          t(.areaQuads)
+        case .calvesAnkles:   t(.areaCalvesAnkles)
         }
     }
 }
 
 enum Intensity: String, Codable, CaseIterable {
     case gentle, moderate
-    var label: String { self == .gentle ? "Gentle" : "Moderate" }
+    var label: String { self == .gentle ? t(.intensityGentle) : t(.intensityModerate) }
 }
 
 enum Feeling: Int, Codable, CaseIterable, Identifiable {
     case bad = 1, meh = 2, good = 3, love = 4
     var id: Int { rawValue }
     var emoji: String { ["😖", "😐", "🙂", "😍"][rawValue - 1] }
-    var label: String { ["Dislike", "Meh", "Good", "Love it"][rawValue - 1] }
+    var label: String {
+        [t(.feelingDislike), t(.feelingMeh), t(.feelingGood), t(.feelingLoveIt)][rawValue - 1]
+    }
 }
 
 enum FeedbackTag: String, Codable, CaseIterable, Identifiable {
@@ -36,9 +44,9 @@ enum FeedbackTag: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .tooHard:   "Too hard"
-        case .justRight: "Just right"
-        case .tooEasy:   "Too easy"
+        case .tooHard:   t(.feedbackTooHard)
+        case .justRight: t(.feedbackJustRight)
+        case .tooEasy:   t(.feedbackTooEasy)
         }
     }
 }
@@ -103,16 +111,23 @@ struct StretchVideo: Codable, Identifiable, Hashable {
 }
 
 /// Body areas the discomfort check-in rotates through, so consecutive prompts differ.
+/// Covers the whole body, not just the lower back / sciatic region.
 enum FocusArea: String, CaseIterable {
     case lowerBack, leftHip, rightHip, hamstrings, neckShoulders, piriformis
+    case upperBack, chest, wristsForearms, quads, calvesAnkles
     var label: String {
         switch self {
-        case .lowerBack:     "lower back"
-        case .leftHip:       "left hip / glute"
-        case .rightHip:      "right hip / glute"
-        case .hamstrings:    "hamstrings"
-        case .neckShoulders: "neck & shoulders"
-        case .piriformis:    "deep glute (piriformis)"
+        case .lowerBack:      t(.focusLowerBack)
+        case .leftHip:        t(.focusLeftHip)
+        case .rightHip:       t(.focusRightHip)
+        case .hamstrings:     t(.focusHamstrings)
+        case .neckShoulders:  t(.focusNeckShoulders)
+        case .piriformis:     t(.focusPiriformis)
+        case .upperBack:      t(.focusUpperBack)
+        case .chest:          t(.focusChest)
+        case .wristsForearms: t(.focusWristsForearms)
+        case .quads:          t(.focusQuads)
+        case .calvesAnkles:   t(.focusCalvesAnkles)
         }
     }
     static func at(_ cursor: Int) -> FocusArea {
@@ -136,9 +151,13 @@ enum FocusArea: String, CaseIterable {
 // MARK: - Offline fallback routine
 
 struct RoutineMove: Codable, Identifiable {
-    var id: String { name }
-    let name: String
-    let symbol: String        // SF Symbol
+    var id: String { key }
+    let key: String            // stable identifier, independent of language
+    let symbol: String         // SF Symbol
     let seconds: Int
-    let cue: String
+    let name: [String: String] // "en" / "zh"
+    let cue: [String: String]
+
+    var localizedName: String { name[AppLanguage.current.rawValue] ?? name["en"] ?? key }
+    var localizedCue: String { cue[AppLanguage.current.rawValue] ?? cue["en"] ?? "" }
 }

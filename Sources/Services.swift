@@ -30,14 +30,59 @@ enum NotificationScheduler {
     static let categoryID = "STRETCH"
     private static let maxPending = 60
 
-    private static let prompts = [
+    /// 22 rotating reminder messages per language, covering the whole body — not just
+    /// the lower back / sciatic area — so the same line rarely repeats.
+    static let promptsEN = [
         "Time to stand up 🧘 Take 3 minutes",
-        "Sitting break — loosen up the piriformis",
+        "Sitting break — loosen up your hips",
         "Your sciatic nerve says thanks. Quick stretch?",
-        "Stand up! Roll those hips 🌀",
+        "Stand up! Roll those shoulders 🌀",
         "3-minute micro-stretch, then back to focus",
-        "Shift position, get the blood moving 🩵"
+        "Shift position, get the blood moving 🩵",
+        "Your neck's been in one spot too long — reset it",
+        "Quick stretch break: unlock those hips",
+        "Give your lower back a breather",
+        "Stand tall, open up that chest 🌿",
+        "Wrists tired from typing? Give them a stretch",
+        "Legs feel stiff? Time for a quick stretch",
+        "A short break now beats a sore back later",
+        "Your body could use a 3-minute reset",
+        "Get up, shake it out, come back sharper",
+        "Time to move — your future self will thank you",
+        "Tight shoulders? Let's fix that in 3 minutes",
+        "Desk posture check — time for a stretch",
+        "Stretch break: hamstrings and hips need love",
+        "Reset your spine with a quick stretch",
+        "Ankles and calves have been idle — wake them up",
+        "You've earned a 3-minute stretch break"
     ]
+    static let promptsZH = [
+        "起身時間到了 🧘 花 3 分鐘動一動",
+        "坐太久了 — 放鬆一下髖部吧",
+        "你的坐骨神經說聲謝謝，來個伸展？",
+        "起來動一動！轉轉肩膀 🌀",
+        "3 分鐘微伸展，然後回去專心",
+        "換個姿勢，讓血液循環一下 🩵",
+        "脖子固定太久了，放鬆一下吧",
+        "伸展小休息：解放一下髖部",
+        "讓下背喘口氣",
+        "站起來，展開胸口 🌿",
+        "手腕打字打累了嗎？伸展一下",
+        "腿覺得僵硬嗎？該伸展了",
+        "現在稍微休息一下，勝過之後腰痠背痛",
+        "身體需要 3 分鐘重新開機",
+        "起來甩一甩，回來更有精神",
+        "動一動吧 — 未來的你會感謝現在的你",
+        "肩膀緊繃嗎？3 分鐘幫你放鬆",
+        "檢查一下坐姿 — 該伸展了",
+        "伸展時間：大腿後側和髖部需要照顧",
+        "來個伸展，讓脊椎重新歸位",
+        "腳踝和小腿太久沒動了，喚醒它們",
+        "你值得這 3 分鐘的伸展休息"
+    ]
+    private static var prompts: [String] {
+        AppLanguage.current == .zh ? promptsZH : promptsEN
+    }
 
     static func requestAuth() async -> Bool {
         (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
@@ -47,10 +92,11 @@ enum NotificationScheduler {
         await center.notificationSettings().authorizationStatus
     }
 
+    /// Re-run after a language change so notification action buttons pick up the new titles.
     static func registerCategory() {
-        let start  = UNNotificationAction(identifier: "START",  title: "Stretch now", options: [.foreground])
-        let snooze = UNNotificationAction(identifier: "SNOOZE", title: "Snooze 5 min")
-        let skip   = UNNotificationAction(identifier: "SKIP",   title: "Not today", options: [.destructive])
+        let start  = UNNotificationAction(identifier: "START",  title: t(.notifActionStart), options: [.foreground])
+        let snooze = UNNotificationAction(identifier: "SNOOZE", title: t(.notifActionSnooze))
+        let skip   = UNNotificationAction(identifier: "SKIP",   title: t(.notifActionSkip), options: [.destructive])
         let cat = UNNotificationCategory(identifier: categoryID,
                                         actions: [start, snooze, skip],
                                         intentIdentifiers: [])
@@ -102,7 +148,7 @@ enum NotificationScheduler {
     static func snooze() async {
         let content = UNMutableNotificationContent()
         content.title = "StretchBreak"
-        content.body = "Snooze's up — let's move 🧘"
+        content.body = t(.notifSnoozeBody)
         content.sound = .default
         content.categoryIdentifier = categoryID
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5 * 60, repeats: false)
@@ -158,7 +204,12 @@ struct YouTubeProvider: VideoProvider {
         ("hamstring stretch for lower back pain", [.hamstrings, .lowerBack], .gentle),
         ("thoracic spine mobility routine 5 min", [.thoracic, .neck], .moderate),
         ("desk break full body stretch 3 minutes", BodyArea.allCases, .gentle),
-        ("gentle lower back stretch routine standing", [.lowerBack, .glutes], .gentle)
+        ("gentle lower back stretch routine standing", [.lowerBack, .glutes], .gentle),
+        ("shoulder mobility stretch routine standing", [.shoulders, .neck], .gentle),
+        ("chest opener doorway stretch routine", [.chest, .shoulders], .gentle),
+        ("wrist forearm stretch for typing desk", [.wristsForearms], .gentle),
+        ("quad stretch standing routine follow along", [.quads, .hipFlexors], .gentle),
+        ("calf ankle stretch standing routine", [.calvesAnkles], .gentle)
     ]
 
     func pool() async -> [StretchVideo] {

@@ -1,17 +1,22 @@
 # StretchBreak
 
-每小時提醒你起身，播一支不重複的 3–5 分鐘 YouTube 伸展影片（或內建計時伸展組），
-做完一鍵評分，前後記錄坐骨神經 / 下背不適度並畫成趨勢圖。
+Reminds you to stand up every hour and do a non-repeating 3–5 minute YouTube
+stretch video (or a built-in offline routine) covering your **whole body** —
+lower back, hips, hamstrings, neck & shoulders, upper back, chest, wrists,
+quads, calves & ankles. One tap rates how it went; discomfort is logged
+before/after and charted as a trend over time.
 
 - iOS 17+ / Xcode 15+
-- SwiftUI + SwiftData，無後端、無第三方套件
-- 提醒為本機通知，不需要網路、不上傳任何資料
+- SwiftUI + SwiftData, no backend, no third-party packages
+- Reminders are local notifications — no network required, nothing is uploaded
+- Fully bilingual: **English** and **Traditional Chinese (繁體中文)**, switchable
+  anytime in Settings — no restart needed
 
 ---
 
-## 建置方式
+## Building
 
-### 方法 A — XcodeGen（推薦）
+### Option A — XcodeGen (recommended)
 
 ```bash
 brew install xcodegen
@@ -20,116 +25,177 @@ xcodegen generate
 open StretchBreak.xcodeproj
 ```
 
-在 Xcode 裡：
-1. 選 target `StretchBreak` → Signing & Capabilities → 選你的 Team（個人 Apple ID 也可）。
-2. 接上 iPhone，選為執行裝置，按 ▶︎。
-3. 首次在手機上開啟：設定 → 一般 → VPN 與裝置管理 → 信任你的開發者憑證。
-4. App 內完成引導頁、允許通知。
+In Xcode:
+1. Select target `StretchBreak` → Signing & Capabilities → pick your Team (a
+   personal Apple ID works too).
+2. Connect an iPhone, select it as the run destination, press ▶︎.
+3. First launch on the phone: Settings → General → VPN & Device Management →
+   trust your developer certificate.
+4. Complete onboarding in the app and allow notifications.
 
-> 免費 Apple ID 的側載憑證 7 天到期，需重新用 Xcode 執行一次；同時最多 3 個側載 App。
-> 想長期用可上傳到 TestFlight（需付費開發者帳號）。
+> A free Apple ID's sideload certificate expires after 7 days and needs a
+> re-run from Xcode; also capped at 3 sideloaded apps at a time. For
+> longer-term use, distribute via TestFlight (requires a paid developer account).
 
-### 方法 B — 手動建立專案（不裝 XcodeGen）
+### Option B — Manual project setup (no XcodeGen)
 
-1. Xcode → File → New → Project → iOS → App。
+1. Xcode → File → New → Project → iOS → App.
    - Product Name: `StretchBreak`
-   - Interface: SwiftUI，Language: Swift，Storage: None
-   - 最低版本設 iOS 17.0
-2. 刪掉範本產生的 `ContentView.swift` 和 `StretchBreakApp.swift`。
-3. 把本資料夾 `Sources/` 裡的檔案全部拖進專案（勾 Copy items if needed、加入 target）：
-   `App.swift` `Models.swift` `Services.swift` `Views.swift` `YouTubePlayerView.swift` `routine.json`
-4. Target → Info → 新增一個 String 鍵 `YTAPIKey`（值留空或填金鑰，見下）。
-5. 接手機執行。
+   - Interface: SwiftUI, Language: Swift, Storage: None
+   - Minimum deployment: iOS 17.0
+2. Delete the template's `ContentView.swift` and `StretchBreakApp.swift`.
+3. Drag everything from this folder's `Sources/` into the project (check
+   "Copy items if needed" and add to target):
+   `App.swift` `Models.swift` `Services.swift` `Localization.swift`
+   `Views.swift` `YouTubePlayerView.swift` `PlayerWarmer.swift`
+   `VideoStore.swift` `routine.json`
+4. Target → Info → add a String key `YTAPIKey` (leave blank, or fill in a key —
+   see below).
+5. Run on your phone.
 
 ---
 
-## YouTube 影片來源
+## Language
 
-三種模式，App 會自動判斷：
+The app ships with two complete translations — English and Traditional
+Chinese — covering every screen, all 20+ notification messages, and the
+offline routine. Switch freely at any time from **Settings → Language**;
+the whole UI updates immediately, no restart required. It defaults to
+Traditional Chinese on devices with a Chinese system language, English
+otherwise.
 
-| 設定 | 行為 |
+Adding a language: extend `AppLanguage` and add a translation column to every
+entry in the `strings` dictionary in `Sources/Localization.swift`, plus a
+matching key in each `routine.json` move's `name`/`cue` objects.
+`LocalizationTests.swift` fails the build if any key is missing a translation
+in a supported language, so the compiler/test suite catches gaps early.
+
+## YouTube video sources
+
+Three modes, auto-detected:
+
+| Setup | Behavior |
 |---|---|
-| **填了 `YTAPIKey`** | 依身體部位（梨狀肌 / 髖屈肌 / 大腿後側 / 胸椎…）輪流呼叫 YouTube 搜尋，抓可嵌入的 4–20 分鐘影片，最近播過的自動排除 → 幾乎不重複、內容無限 |
-| **在 App「設定」貼 YouTube 連結** | 自建影片清單，與上面來源合併 |
-| **兩者都沒有** | 使用內建計時伸展組（`routine.json`，8 組 ~4.5 分鐘，離線可用）|
+| **`YTAPIKey` set** | Rotates YouTube search queries across every body area (piriformis, hip flexors, hamstrings, thoracic spine, neck, shoulders, chest, wrists/forearms, quads, calves/ankles…), fetches embeddable 4–20 min videos, excludes recently played → effectively non-repeating, unlimited content |
+| **YouTube link(s) pasted in Settings** | Builds a personal playlist, merged with the source above |
+| **Neither** | Falls back to the built-in timed routine (`routine.json`, 11 moves, ~5 min, full body, works offline) |
 
-**取得金鑰**：Google Cloud Console → 建專案 → 啟用 *YouTube Data API v3* → 建立 API 金鑰。
-填入位置：`project.yml` 裡 `YTAPIKey: "你的金鑰"`，重跑 `xcodegen generate`；
-或方法 B 直接在 Target Info 的 `YTAPIKey` 欄位。免費額度每天 10,000 units，本 App 一天用不到 1%。
+**Getting a key**: Google Cloud Console → create a project → enable
+*YouTube Data API v3* → create an API key.
+Set it via `YT_API_KEY` in `.env.local` (gitignored — see
+`.env.local.example`), then run `export $(cat .env.local | xargs) &&
+xcodegen generate`; or, with Option B, paste it directly into the target's
+Info `YTAPIKey` field. Free quota is 10,000 units/day; this app uses well
+under 1% of that per day.
 
-**預抓（兩層）**：
-- `VideoStore`：App 啟動 / 回前景時背景搜尋 + 驗證影片清單，存記憶體與磁碟
-  （`video_cache.json`，TTL 6 小時）。
-- `PlayerWarmer`：拿一個隱藏的 WKWebView，在 App 開啟 / 每次 session 結束 / 清單更新後，
-  預先把「下一支可能的影片」的 YouTube player（iframe API + player 物件）建好。點
-  「Stretch now」時若命中，session 直接接手這個 webview → 幾乎瞬間開始，不用再等
-  ~2–3 秒的 player 初始化。reroll 或沒命中就正常重新載入。
+**Prefetching (two layers)**:
+- `VideoStore`: searches + verifies a video pool in the background on launch
+  and foreground, cached in memory and on disk (`video_cache.json`, 6h TTL).
+- `PlayerWarmer`: keeps a hidden `WKWebView` around and, on app open / after
+  each session / whenever the pool updates, pre-builds the YouTube player
+  (iframe API + player object) for the *next* likely video. Tapping "Stretch
+  now" hands that warmed webview straight to the session when it's a hit →
+  playback starts almost instantly instead of waiting the usual ~2–3s for
+  player init. A reroll or a miss falls back to a normal fresh load.
 
-**iOS 模擬器只有聲音、畫面不動**：這是模擬器的 WKWebView 媒體解碼限制（log 會看到
-`WebKit Media Playback` assertion 失敗），不是 App 的問題。**實機 iPhone 正常**。
+**iOS Simulator plays audio only, no picture moves**: this is a Simulator
+limitation in `WKWebView` media decoding (you'll see a `WebKit Media
+Playback` assertion failure in the log) — not an app bug. **A real iPhone
+plays normally.**
 
-**穩定性**：
-- 播放器直接載入 `youtube.com/embed/<id>` 真實網址（不是 `loadHTMLString`＋baseURL —
-  那樣 WKWebView 拿不到正確 origin，iframe API 交握失敗會讓每支影片都報錯）。
-- 搜尋後多打一次 `videos.list` 只留 `status.embeddable=true` + `public` 的影片
-  （search 的 `videoEmbeddable` 過濾不可靠），把 150/152 從源頭清掉。
-- 直接載入沒有 JS 事件，改用影片實際長度的計時器到時自動進評分（上限 7 分鐘）；
-  網路層失敗會透過 navigation delegate 回報 → 換下一支，連續 4 支失敗退回內建伸展組。
-- 播放畫面有「Next video」手動換片。
+**Reliability**:
+- The player loads the real `youtube.com/embed/<id>` URL directly (not
+  `loadHTMLString` + `baseURL` — that gives `WKWebView` the wrong origin, so
+  the iframe API handshake fails and every video errors out).
+- After search, a second `videos.list` call keeps only videos with
+  `status.embeddable=true` and `public` (search's own `videoEmbeddable`
+  filter is unreliable) — this kills the 150/152 errors at the source.
+- Since a direct embed load has no reliable JS lifecycle events, a timer set
+  to the video's real duration auto-advances to rating (capped at 7 min).
+  Network-layer failures are caught via the navigation delegate → the app
+  moves to the next video; 4 consecutive failures fall back to the offline
+  routine.
+- The playback screen has a manual "Next video" control.
 
-**不適度提問**：每次 session 輪流問不同部位（下背 → 左髖 → 右髖 → 大腿後側 → 頸肩 →
-深層臀肌），連續兩次不會重複；記錄在 `SessionLog.focusArea`。
+**Discomfort check-in**: each session rotates through a different body area
+(lower back → left hip → right hip → hamstrings → neck & shoulders →
+piriformis → upper back → chest → wrists & forearms → quads → calves &
+ankles), never repeating the same area twice in a row; recorded in
+`SessionLog.focusArea`.
 
-**接續痠痛**：上一次某部位不適 ≥ 7（且該次 stretch 沒被評為 😖、距今 < 24 小時）時，
-下次開場會問「上次你的 X 是 7/10，要用同一組 stretch 繼續嗎？」→ Repeat it / Try something new。
-選 Repeat 時，check-in 也會鎖定在該痠痛部位而非輪替部位。
+**Following up on soreness**: if a body area scored ≥ 7 last time (and that
+stretch wasn't rated 😖, and it was < 24h ago), the next session opens by
+asking "Last time your X was 7/10 — same stretch again?" → Repeat it / Try
+something new. Choosing Repeat also locks the check-in to that sore area
+instead of the normal rotation.
 
 ---
 
-## 排程細節
+## Scheduling details
 
-- iOS 一次最多 64 個待觸發本機通知。App 每次進入前景時，重新排未來 8 天、封頂 60 個。
-- 通知動作：`開始伸展`（開 App 直接進入伸展流程）/ `延後 5 分鐘` / `今天不用了`（取消今天剩餘）。
-- 時段跨午夜、改間隔、日光節約 → 下次開 App 會自動重排。
+- iOS allows at most 64 pending local notifications at a time. The app
+  reschedules the next 8 days (capped at 60) every time it enters the
+  foreground.
+- Notification actions: `Stretch now` (opens the app straight into the
+  stretch flow) / `Snooze 5 min` / `Not today` (cancels the rest of today's
+  reminders). Action titles and all 22 rotating message variants are
+  localized and re-registered whenever the language changes.
+- Crossing midnight, changing the interval, or daylight saving all trigger
+  an automatic reschedule the next time the app opens.
 
-## 檔案
+## Files
 
 ```
-project.yml                 XcodeGen 設定
+project.yml                 XcodeGen config
+.env.local.example          Template for the YT_API_KEY env var (see .env.local, gitignored)
 Sources/
-  App.swift                 App 進入點、通知 delegate
-  Models.swift              SwiftData model + enum
-  Services.swift            通知排程、YouTube 搜尋、推薦演算法、統計
-  YouTubePlayerView.swift   WKWebView + iframe API 播放器
-  Views.swift               所有畫面（首頁 / 伸展流程 / 評分 / 痛感 / 紀錄 / 設定 / 引導）
-  routine.json              離線伸展組
-  Info.plist                含 YTAPIKey 欄位
+  App.swift                 App entry point, notification delegate
+  Models.swift              SwiftData models + enums (BodyArea, FocusArea, …)
+  Localization.swift        AppLanguage + the full EN/繁中 string catalog (t(_:))
+  Services.swift            Notification scheduling, YouTube search, recommender, stats
+  YouTubePlayerView.swift   WKWebView + iframe API player
+  PlayerWarmer.swift        Pre-warms the next likely video's player
+  VideoStore.swift          Background search + on-disk video cache
+  Views.swift               All screens (home / stretch flow / rating / pain / history / settings / onboarding)
+  routine.json              Offline routine — 11 moves, bilingual name/cue, full body
+  Info.plist                Contains the YTAPIKey field
 ```
 
-## 測試
+## Testing
 
-`Tests/` 有一個 `StretchBreakTests` target（`@testable import`，host = App）。
+`Tests/` has a `StretchBreakTests` target (`@testable import`, host = App).
 
 ```bash
 xcodebuild test -scheme StretchBreak -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
-或在 Xcode 按 `⌘U`。
+or press `⌘U` in Xcode.
 
-- **純單元測試**（快、免網路）：`ParsingTests`（YouTube URL 解析、ISO8601 長度、API JSON
-  解碼）、`RecommenderTests`（不重播最近視窗、排除壞片/不喜歡、偏好沒看過的）、
-  `StatsTests`（連續天數含免死、當日次數、本週分鐘）、`PolicyTests`（部位輪替不連續重複、
-  痛感 ≥ 7 的接續條件）。
-- **`YouTubeLiveTests`**（要網路 + `YTAPIKey`，沒設會自動 skip）：實際打 YouTube API 跑
-  `YouTubeProvider.pool()`，斷言回傳 ≥ 3 支、都可嵌入、長度合理、id 不重複；再用 WKWebView
-  實際載入第一支 `embed` 頁確認會載入成功。這是真正「YouTube 有沒有成功」的檢查。
+- **Pure unit tests** (fast, no network): `ParsingTests` (YouTube URL parsing,
+  ISO8601 duration, API JSON decoding), `RecommenderTests` (no repeats within
+  the recent window, excludes broken/disliked videos, prefers unseen),
+  `StatsTests` (streak incl. one freeze day, today's count, weekly minutes),
+  `PolicyTests` (body-area rotation never repeats consecutively, the ≥7 pain
+  follow-up condition), `LocalizationTests` (every key translated in both
+  languages, language switching actually changes output, template
+  formatting, whole-body coverage in `BodyArea`/`FocusArea`, the
+  notification prompt bank has ≥ 20 unique messages per language, every
+  offline routine move has both a `en` and `zh` name/cue).
+- **`YouTubeLiveTests`** (needs network + `YTAPIKey`, auto-skips without one):
+  actually calls the YouTube API via `YouTubeProvider.pool()`, asserts it
+  returns ≥ 3 videos, all embeddable, reasonable length, unique ids; then
+  loads the first video's `embed` page in a real `WKWebView` to confirm it
+  actually loads. This is the real "does YouTube integration work" check.
 
-## App 圖示
+## App icon
 
-`Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`（1024×1024，Xcode 15+ 單尺寸）。
-設計：白色「起身伸展」人形 + 湖綠漸層，對應 App 內的 teal 主色。
-要改：編輯 `tools/make_icon.py`（純 Pillow，`pip3 install Pillow`）後執行
-`python3 tools/make_icon.py` 重新產生，再 build。
+`Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` (1024×1024,
+single-size, Xcode 15+). Design: a white stand-and-stretch figure on a teal
+gradient, matching the app's teal accent color.
+To change it: edit `tools/make_icon.py` (pure Pillow, `pip3 install Pillow`)
+then run `python3 tools/make_icon.py` to regenerate, then rebuild.
 
-## 尚未做（v2）
+## Not yet done (v2)
 
-Apple Watch、HealthKit 寫入、跨裝置同步、深色 / tinted 圖示變體、社群。
+Apple Watch, HealthKit writes, cross-device sync, dark / tinted icon
+variants, social features, additional languages beyond English and
+Traditional Chinese.
