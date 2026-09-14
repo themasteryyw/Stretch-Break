@@ -1,0 +1,18 @@
+[
+  { "name": "Stand & breathe + shoulder rolls", "symbol": "lungs.fill", "seconds": 30,
+    "cue": "Stand up. Inhale, lift shoulders toward your ears; exhale and drop them fully. Repeat." },
+  { "name": "Standing forward fold", "symbol": "figure.walk", "seconds": 40,
+    "cue": "Soft knees. Hinge at the hips and hang the upper body down. Relax head and neck; feel the hamstrings and low back lengthen." },
+  { "name": "Standing figure-4 (left)", "symbol": "figure.strengthtraining.functional", "seconds": 40,
+    "cue": "Hold a chair. Cross left ankle over right knee, sit the hips back. Feel a stretch deep in the left glute." },
+  { "name": "Standing figure-4 (right)", "symbol": "figure.strengthtraining.functional", "seconds": 40,
+    "cue": "Switch sides. Right ankle over left knee, hips back, keep the spine long — no rounding." },
+  { "name": "Hip-flexor lunge stretch (left)", "symbol": "figure.run", "seconds": 40,
+    "cue": "Big step forward with the left foot into a lunge, back heel lifted, tuck the pelvis slightly. Feel the front of the right hip open." },
+  { "name": "Hip-flexor lunge stretch (right)", "symbol": "figure.run", "seconds": 40,
+    "cue": "Switch sides. Stay tall through the torso, no shrugging, slow your breathing." },
+  { "name": "Standing spinal rotation", "symbol": "arrow.triangle.2.circlepath", "seconds": 30,
+    "cue": "Feet hip-width, arms crossed over the chest. Slowly rotate the torso left and right, letting the eyes follow." },
+  { "name": "Neck side stretch", "symbol": "figure.mind.and.body", "seconds": 30,
+    "cue": "Rest your right hand gently on the left side of the head, ease the head toward the right shoulder, left shoulder down. Switch sides, then return to your desk." }
+]

@@ -1,0 +1,20 @@
+# Secrets
+.env.local
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+.build/
+.swiftpm/
+
+# XcodeGen-generated / build artifacts
+StretchBreak.xcodeproj/
+Sources/Info.plist
+
+# Runtime cache
+video_cache.json
+
+# macOS
+.DS_Store
