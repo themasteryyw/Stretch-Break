@@ -6,6 +6,14 @@ lower back, hips, hamstrings, neck & shoulders, upper back, chest, wrists,
 quads, calves & ankles. One tap rates how it went; discomfort is logged
 before/after and charted as a trend over time.
 
+A solo side project by [Sharon Yang](https://github.com/themasteryyw), a QA
+automation engineer — built with the same test-first discipline used
+professionally: every scheduling, recommendation, and localization rule below
+is backed by an XCTest case (see [Testing](#testing)).
+
+**Tech stack**: Swift, SwiftUI, SwiftData, WKWebView (YouTube iframe API),
+XCTest — no backend, no third-party packages.
+
 - iOS 17+ / Xcode 15+
 - SwiftUI + SwiftData, no backend, no third-party packages
 - Reminders are local notifications — no network required, nothing is uploaded
