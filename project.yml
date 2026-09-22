@@ -23,16 +23,8 @@ targets:
         #   export $(cat .env.local | xargs) && xcodegen generate
         # Leave unset to use the built-in offline routine + any YouTube links added in Settings.
         YTAPIKey: "${YT_API_KEY}"
-        CFBundleIcons:
-          CFBundleAlternateIcons:
-            AppIcon-Pink:
-              CFBundleIconFiles:
-                - AppIcon-Pink
-              UIPrerenderedIcon: false
-            AppIcon-Latte:
-              CFBundleIconFiles:
-                - AppIcon-Latte
-              UIPrerenderedIcon: false
+        # No CFBundleAlternateIcons — as of 2026-09-15 the app icon is a single fixed
+        # design, deliberately independent of the in-app theme color.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sharonyang.stretchbreak

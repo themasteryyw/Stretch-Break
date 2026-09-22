@@ -8,6 +8,17 @@ final class StatsTests: XCTestCase {
         return SessionLog(date: d, videoID: "v", videoTitle: "v", completedSec: sec)
     }
 
+    func testComputedDailyGoalMatchesScheduleWindow() {
+        XCTAssertEqual(Cfg.computedDailyGoal(startHour: 9, endHour: 18, intervalMin: 60), 10)
+        XCTAssertEqual(Cfg.computedDailyGoal(startHour: 9, endHour: 18, intervalMin: 120), 5)
+        XCTAssertEqual(Cfg.computedDailyGoal(startHour: 9, endHour: 10, intervalMin: 60), 2)
+    }
+
+    func testComputedDailyGoalNeverGoesBelowOne() {
+        XCTAssertGreaterThanOrEqual(Cfg.computedDailyGoal(startHour: 9, endHour: 9, intervalMin: 60), 1)
+        XCTAssertGreaterThanOrEqual(Cfg.computedDailyGoal(startHour: 18, endHour: 9, intervalMin: 60), 1)
+    }
+
     func testTodayCount() {
         XCTAssertEqual(StatsService.todayCount([log(daysAgo: 0), log(daysAgo: 0), log(daysAgo: 1)]), 2)
         XCTAssertEqual(StatsService.todayCount([]), 0)
@@ -41,5 +52,12 @@ final class StatsTests: XCTestCase {
 
     func testStreakCountsMultipleSessionsOnSameDayOnce() {
         XCTAssertEqual(StatsService.streak([log(daysAgo: 0), log(daysAgo: 0), log(daysAgo: 1)]), 2)
+    }
+
+    func testAppendingTodaysSessionExtendsStreakConsistentlyWithTodayCount() {
+        let priorLogs = [log(daysAgo: 1), log(daysAgo: 2)]
+        let allLogs = priorLogs + [log(daysAgo: 0)]
+        XCTAssertEqual(StatsService.todayCount(allLogs), 1)
+        XCTAssertEqual(StatsService.streak(allLogs), 3, "today's session should extend the streak to 3")
     }
 }

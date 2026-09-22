@@ -49,6 +49,14 @@ final class RecommenderTests: XCTestCase {
                                         recentIDs: ["only"], recentAreas: []))
     }
 
+    func testRerollExcludesTheCurrentlyPlayingVideoEvenInANarrowPool() {
+        let pool = [vid("current"), vid("alternative")]
+        for _ in 0..<50 {
+            let pick = Recommender.next(from: pool, stats: [:], recentIDs: ["current"], recentAreas: [])
+            XCTAssertEqual(pick?.id, "alternative", "reroll must not silently hand back the video already on screen")
+        }
+    }
+
     func testPrefersUnseenOverHeavilyPlayed() {
         let pool = [vid("seen"), vid("fresh")]
         let seen = VideoStat(videoID: "seen"); seen.timesPlayed = 12

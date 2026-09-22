@@ -1,11 +1,7 @@
 import Foundation
 
-// MARK: - App language
-
-/// Supported in-app languages. Free to switch from Settings at any time —
-/// no restart needed, since every view re-reads `t(_:)` on redraw.
 enum AppLanguage: String, CaseIterable, Identifiable {
-    case en, zh   // zh = Traditional Chinese (繁體中文)
+    case en, zh
     var id: String { rawValue }
 
     var label: String {
@@ -15,7 +11,6 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Falls back to the device's preferred language on first launch, then to English.
     static var current: AppLanguage {
         if let raw = UserDefaults.standard.string(forKey: "appLanguage"),
            let lang = AppLanguage(rawValue: raw) {
@@ -25,101 +20,81 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - Translation keys
-
 enum L: String, CaseIterable {
-    // Tabs
     case tabToday, tabHistory, tabSettings
 
-    // Home
-    case standUpsToday, dayStreak, minThisWeek, stretchNowButton
+    case standUpsToday, dayStreak, minThisWeek, stretchNowButton, stretchNowButtonTimer
     case notifOffWarning, nextReminder, outsideReminderHours, loadingStretch
 
-    // Session flow
     case painBeforeTitle, painAfterTitle, nextVideoButton, doneEndEarlyButton, openInYouTubeButton
+    case timerOnlyTitle
+    case likeVideoA11y, dislikeVideoA11y
 
-    // Offline routine
     case moveCounter, skipThisOneButton, endButton
 
-    // Repeat offer
     case repeatLastTime, repeatQuestion, repeatItButton, somethingNewButton
 
-    // Rating
-    case howWasThat, submitButton, skipButton
+    case submitButton, skipButton, howDoYouFeelNow
 
-    // Reward
     case rewardMilestoneHeadline, rewardFirstTodayHeadline, rewardGenericHeadline
     case rewardMilestoneMessage, rewardGenericMessage
     case rewardStreakLabel, rewardTodayLabel, rewardDoneButton
 
-    // Pain check-in
     case painNone, painSevere
 
-    // History
     case historyChartTitle, historyPainTrendTitle, historyRecentSection
     case historyNoLogsYet, historyNavTitle
 
-    // Settings
     case settingsNavTitle, sectionReminderHours, stepperStart, stepperEnd, intervalLabel, minUnit
-    case sectionGoalPrompts, dailyGoal, askDiscomfortToggle
+    case sectionGoalPrompts, askDiscomfortToggle
+    case modeVideo, modeTimer, timerDurationLabel
     case sectionAppearance, appearanceFooter
     case sectionLanguage, languageFooter
     case pasteYoutubeLinkPlaceholder, addButton, sectionVideoSources
     case videoSourcesFooterWithKey, videoSourcesFooterNoKey
     case rescheduleNotifButton, notifOffOpenSettings
 
-    // Theme names
-    case themeTeal, themeBlush, themeLatte
+    case themeBlush, themeLatte, themeMorandi
 
-    // Onboarding
     case onboard1Title, onboard1Message, onboard2Title, onboard2Message
     case onboard3Title, onboard3Message
     case nextButton, allowNotifStartButton, maybeLaterButton
 
-    // Body areas (video tagging)
     case areaPiriformis, areaGlutes, areaHipFlexors, areaHamstrings, areaLowerBack
     case areaThoracic, areaNeck, areaShoulders, areaChest, areaWristsForearms
     case areaQuads, areaCalvesAnkles
 
-    // Focus areas (check-in rotation)
     case focusLowerBack, focusLeftHip, focusRightHip, focusHamstrings, focusNeckShoulders
     case focusPiriformis, focusUpperBack, focusChest, focusWristsForearms, focusQuads
     case focusCalvesAnkles
 
-    // Intensity / feeling / feedback
     case intensityGentle, intensityModerate
     case feelingDislike, feelingMeh, feelingGood, feelingLoveIt
     case feedbackTooHard, feedbackJustRight, feedbackTooEasy
 
-    // Notification actions
-    case notifActionStart, notifActionSnooze, notifActionSkip, notifSnoozeBody
+    case notifActionStart, notifActionSnooze, notifActionSkip, notifSnoozeBody, timerDoneBody
 
-    // Misc user-facing labels
     case channelYourList, channelRepeat, customVideoTitle
 }
 
-/// Returns the localized string for `key` in the current `AppLanguage`.
-/// Falls back to the English string (or the raw key) if a translation is missing.
 func t(_ key: L) -> String {
     strings[key]?[AppLanguage.current] ?? strings[key]?[.en] ?? key.rawValue
 }
 
-/// `String(format:)` variant for templated strings (e.g. "%@" / "%d" placeholders).
 func t(_ key: L, _ args: CVarArg...) -> String {
     String(format: t(key), arguments: args)
 }
 
 private let strings: [L: [AppLanguage: String]] = [
-    // MARK: Tabs
     .tabToday:    [.en: "Today", .zh: "今天"],
     .tabHistory:  [.en: "History", .zh: "紀錄"],
     .tabSettings: [.en: "Settings", .zh: "設定"],
 
-    // MARK: Home
     .standUpsToday:        [.en: "stand-ups today", .zh: "今日次數"],
     .dayStreak:            [.en: "day streak", .zh: "連續天數"],
     .minThisWeek:          [.en: "min this week", .zh: "本週分鐘"],
-    .stretchNowButton:     [.en: "Stretch now · 3 min", .zh: "現在伸展 · 3 分鐘"],
+    .stretchNowButton:     [.en: "Stretch now · %d min", .zh: "現在伸展 · %d 分鐘"],
+    .stretchNowButtonTimer:[.en: "Stretch now · Timer %d min", .zh: "現在伸展 · 計時 %d 分鐘"],
     .notifOffWarning:      [.en: "Notifications are off — you won't get reminders. Turn them on in Settings",
                              .zh: "通知未開啟，不會收到休息提醒 — 前往「設定」開啟"],
     .nextReminder:         [.en: "Next reminder: %@", .zh: "下次提醒：%@"],
@@ -127,31 +102,29 @@ private let strings: [L: [AppLanguage: String]] = [
                              .zh: "目前不在提醒時段內 — 可在設定調整"],
     .loadingStretch:       [.en: "Getting your stretch ready…", .zh: "正在準備伸展內容…"],
 
-    // MARK: Session flow
     .painBeforeTitle:   [.en: "How's your %@ right now?", .zh: "現在你的%@感覺如何？"],
     .painAfterTitle:    [.en: "And your %@ now, after stretching?", .zh: "伸展後，你的%@現在感覺如何？"],
     .nextVideoButton:   [.en: "Next video", .zh: "換一支影片"],
     .doneEndEarlyButton:[.en: "Done / end early", .zh: "完成／提早結束"],
     .openInYouTubeButton:[.en: "Open in YouTube", .zh: "在 YouTube 開啟"],
+    .timerOnlyTitle: [.en: "Stretch on your own", .zh: "自主伸展"],
+    .likeVideoA11y:    [.en: "Like this video", .zh: "喜歡這支影片"],
+    .dislikeVideoA11y: [.en: "Dislike this video", .zh: "不喜歡這支影片"],
 
-    // MARK: Offline routine
     .moveCounter:       [.en: "Move %d / %d", .zh: "第 %d／%d 組"],
     .skipThisOneButton: [.en: "Skip this one", .zh: "跳過這組"],
     .endButton:         [.en: "End", .zh: "結束"],
 
-    // MARK: Repeat offer
     .repeatLastTime:     [.en: "Last time your %@ was %d/10.", .zh: "上次你的%@是 %d/10。"],
     .repeatQuestion:     [.en: "Want to keep working on it with the same stretch?",
                            .zh: "要用同一組 stretch 繼續嗎？"],
     .repeatItButton:     [.en: "Repeat it", .zh: "重複這組"],
     .somethingNewButton: [.en: "Try something new", .zh: "換點新的"],
 
-    // MARK: Rating
-    .howWasThat:  [.en: "How was that?", .zh: "剛剛感覺如何？"],
     .submitButton:[.en: "Submit", .zh: "送出"],
     .skipButton:  [.en: "Skip", .zh: "跳過"],
+    .howDoYouFeelNow: [.en: "How do you feel now?", .zh: "現在覺得如何？"],
 
-    // MARK: Reward
     .rewardMilestoneHeadline: [.en: "Amazing — %d days in a row!", .zh: "了不起，連續 %d 天了！"],
     .rewardFirstTodayHeadline:[.en: "First stretch of the day, done!", .zh: "今天的第一次伸展，完成！"],
     .rewardGenericHeadline:   [.en: "Well done — give yourself a hand", .zh: "做得很好，給自己一個掌聲"],
@@ -163,18 +136,15 @@ private let strings: [L: [AppLanguage: String]] = [
     .rewardTodayLabel:  [.en: "done today", .zh: "今日完成"],
     .rewardDoneButton:  [.en: "Done", .zh: "完成"],
 
-    // MARK: Pain check-in
     .painNone:   [.en: "0 None", .zh: "0 不痛"],
     .painSevere: [.en: "10 Severe", .zh: "10 劇烈"],
 
-    // MARK: History
     .historyChartTitle:     [.en: "Stand-ups per day (last 14 days)", .zh: "每日起身次數（近 14 天）"],
     .historyPainTrendTitle: [.en: "Post-stretch discomfort trend", .zh: "伸展後不適度趨勢"],
     .historyRecentSection:  [.en: "Recent", .zh: "最近紀錄"],
     .historyNoLogsYet:      [.en: "No history yet — do your first stretch!", .zh: "還沒有紀錄 — 做你的第一次伸展吧！"],
     .historyNavTitle:       [.en: "History", .zh: "紀錄"],
 
-    // MARK: Settings
     .settingsNavTitle:    [.en: "Settings", .zh: "設定"],
     .sectionReminderHours:[.en: "Reminder hours", .zh: "提醒時段"],
     .stepperStart:        [.en: "Start: %d:00", .zh: "開始：%d:00"],
@@ -182,12 +152,14 @@ private let strings: [L: [AppLanguage: String]] = [
     .intervalLabel:       [.en: "Interval", .zh: "間隔"],
     .minUnit:             [.en: "%d min", .zh: "%d 分鐘"],
     .sectionGoalPrompts:  [.en: "Goal & prompts", .zh: "目標與提示"],
-    .dailyGoal:           [.en: "Daily goal: %d", .zh: "每日目標：%d"],
     .askDiscomfortToggle: [.en: "Ask discomfort each time", .zh: "每次都詢問不適度"],
+    .modeVideo:          [.en: "Video", .zh: "影片"],
+    .modeTimer:          [.en: "Timer", .zh: "計時"],
+    .timerDurationLabel: [.en: "Duration", .zh: "時間長度"],
     .sectionAppearance:   [.en: "Appearance", .zh: "外觀"],
     .appearanceFooter:    [
-        .en: "One tap changes both the theme color and the app icon. Peach Fuzz and Mocha Mousse are real Pantone Colors of the Year (2024 / 2025).",
-        .zh: "點一下同時套用主題色與 App 圖示。蜜桃絨、摩卡慕斯皆為真實的 Pantone 年度代表色（2024／2025）。"],
+        .en: "Changes the accent color used throughout the app.",
+        .zh: "套用到 App 內使用的主題色。"],
     .sectionLanguage:     [.en: "Language", .zh: "語言"],
     .languageFooter:      [.en: "Switch freely at any time — no restart needed.",
                             .zh: "可隨時自由切換，不需要重新啟動。"],
@@ -203,12 +175,10 @@ private let strings: [L: [AppLanguage: String]] = [
     .rescheduleNotifButton: [.en: "Reschedule notifications", .zh: "重新排定通知"],
     .notifOffOpenSettings:  [.en: "Notifications are off — open Settings", .zh: "通知已關閉 — 前往「設定」開啟"],
 
-    // MARK: Theme names (blush/latte follow real Pantone Colors of the Year)
-    .themeTeal:  [.en: "Teal", .zh: "薄荷綠"],
-    .themeBlush: [.en: "Peach Fuzz", .zh: "蜜桃絨"],
-    .themeLatte: [.en: "Mocha Mousse", .zh: "摩卡慕斯"],
+    .themeMorandi: [.en: "Morandi", .zh: "莫蘭迪"],
+    .themeLatte:   [.en: "Latte", .zh: "奶茶色"],
+    .themeBlush:   [.en: "Pink", .zh: "粉色"],
 
-    // MARK: Onboarding
     .onboard1Title:  [.en: "Sitting compresses the sciatic nerve", .zh: "久坐會壓迫坐骨神經"],
     .onboard1Message:[
         .en: "A 3–5 minute micro-stretch every hour meaningfully lowers discomfort across your whole body — lower back, hips, neck, shoulders and more. This app does one thing: remind you on time and hand you a non-repeating stretch.",
@@ -225,7 +195,6 @@ private let strings: [L: [AppLanguage: String]] = [
     .allowNotifStartButton:  [.en: "Allow notifications & start", .zh: "允許通知並開始"],
     .maybeLaterButton:       [.en: "Maybe later", .zh: "之後再說"],
 
-    // MARK: Body areas (video tagging)
     .areaPiriformis:     [.en: "Piriformis", .zh: "梨狀肌"],
     .areaGlutes:         [.en: "Glutes", .zh: "臀肌"],
     .areaHipFlexors:     [.en: "Hip flexors", .zh: "髖屈肌"],
@@ -239,7 +208,6 @@ private let strings: [L: [AppLanguage: String]] = [
     .areaQuads:          [.en: "Quads", .zh: "大腿前側"],
     .areaCalvesAnkles:   [.en: "Calves & ankles", .zh: "小腿／腳踝"],
 
-    // MARK: Focus areas (check-in rotation)
     .focusLowerBack:      [.en: "lower back", .zh: "下背"],
     .focusLeftHip:        [.en: "left hip / glute", .zh: "左髖"],
     .focusRightHip:       [.en: "right hip / glute", .zh: "右髖"],
@@ -252,7 +220,6 @@ private let strings: [L: [AppLanguage: String]] = [
     .focusQuads:          [.en: "quads", .zh: "大腿前側"],
     .focusCalvesAnkles:   [.en: "calves & ankles", .zh: "小腿／腳踝"],
 
-    // MARK: Intensity / feeling / feedback
     .intensityGentle:   [.en: "Gentle", .zh: "溫和"],
     .intensityModerate: [.en: "Moderate", .zh: "中等"],
     .feelingDislike:    [.en: "Dislike", .zh: "不喜歡"],
@@ -263,14 +230,46 @@ private let strings: [L: [AppLanguage: String]] = [
     .feedbackJustRight: [.en: "Just right", .zh: "剛剛好"],
     .feedbackTooEasy:   [.en: "Too easy", .zh: "太簡單"],
 
-    // MARK: Notification actions
     .notifActionStart:  [.en: "Stretch now", .zh: "開始伸展"],
     .notifActionSnooze: [.en: "Snooze 5 min", .zh: "延後 5 分鐘"],
     .notifActionSkip:   [.en: "Not today", .zh: "今天不用了"],
     .notifSnoozeBody:   [.en: "Snooze's up — let's move 🧘", .zh: "延後時間到了，動一動吧 🧘"],
+    .timerDoneBody:     [.en: "Time's up! Nice work. 🎉", .zh: "時間到了！做得很好。🎉"],
 
-    // MARK: Misc
     .channelYourList:   [.en: "Your list", .zh: "我的清單"],
     .channelRepeat:     [.en: "Repeat", .zh: "重複"],
     .customVideoTitle:  [.en: "Custom video %d", .zh: "自訂影片 %d"],
 ]
+
+private let timerOnlyHints: [AppLanguage: [String]] = [
+    .en: [
+        "Move however feels good — we'll check in when the timer's up.",
+        "Try slow neck rolls, both directions.",
+        "Roll your shoulders back a few times.",
+        "Reach both arms overhead and lengthen your spine.",
+        "Gently twist your torso side to side.",
+        "Fold forward and let your arms hang loose.",
+        "Shake out your hands and wrists.",
+        "Take a few slow, deep breaths.",
+        "You're doing great — keep it gentle.",
+        "Almost there — a few more moments of movement."
+    ],
+    .zh: [
+        "怎麼伸展都可以，跟著自己的感覺動 — 時間到會請你評分。",
+        "試試緩慢的頸部繞圈，兩個方向都做。",
+        "肩膀向後轉幾圈。",
+        "雙手高舉過頭，讓脊椎延伸。",
+        "上半身輕輕左右扭轉。",
+        "身體向前彎，讓手臂自然垂下放鬆。",
+        "甩一甩手腕，放鬆手部。",
+        "做幾個緩慢的深呼吸。",
+        "做得很好，保持輕柔的動作就好。",
+        "快好了，再動一下下。"
+    ]
+]
+
+func timerOnlyHint(at index: Int) -> String {
+    let bank = timerOnlyHints[AppLanguage.current] ?? timerOnlyHints[.en] ?? []
+    guard !bank.isEmpty else { return "" }
+    return bank[((index % bank.count) + bank.count) % bank.count]
+}

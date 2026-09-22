@@ -1,9 +1,6 @@
 import XCTest
 @testable import StretchBreak
 
-/// Guards the i18n system: every key must be translated in both supported
-/// languages, switching languages must actually change what `t()` returns,
-/// and full-body coverage must hold in both English and Traditional Chinese.
 final class LocalizationTests: XCTestCase {
 
     override func tearDown() {
@@ -15,11 +12,7 @@ final class LocalizationTests: XCTestCase {
         UserDefaults.standard.set(lang.rawValue, forKey: "appLanguage")
     }
 
-    // MARK: Every key is translated
-
     func testEveryLocalizationKeyHasEnglishAndChineseText() {
-        // Iterates through every declared key; `t()` falling back to the raw
-        // rawValue (or the English string) would mean a translation is missing.
         for key in allLKeys() {
             setLanguage(.en)
             let en = t(key)
@@ -32,8 +25,6 @@ final class LocalizationTests: XCTestCase {
             XCTAssertNotEqual(zh, key.rawValue, "\(key) is missing a Chinese translation (falling back to the raw key)")
         }
     }
-
-    // MARK: Switching actually changes output
 
     func testSwitchingLanguageChangesText() {
         setLanguage(.en)
@@ -50,11 +41,7 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(t(.moveCounter, 2, 11), "第 2／11 組")
     }
 
-    // MARK: Whole-body coverage
-
     func testBodyAreaCoversWholeBodyNotJustLowerBack() {
-        // Lower body, core/back, and upper body must each be represented —
-        // not only the original sciatic / lower-back focus.
         XCTAssertTrue(BodyArea.allCases.contains(.lowerBack))
         XCTAssertTrue(BodyArea.allCases.contains(.neck))
         XCTAssertTrue(BodyArea.allCases.contains(.shoulders))
@@ -92,11 +79,54 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
-    // MARK: Notification prompt bank
+    func testTimerOnlyHintIsNonEmptyInBothLanguages() {
+        for i in 0..<20 {
+            setLanguage(.en)
+            XCTAssertFalse(timerOnlyHint(at: i).isEmpty)
+            setLanguage(.zh)
+            XCTAssertFalse(timerOnlyHint(at: i).isEmpty)
+        }
+    }
+
+    func testTimerOnlyHintChangesAcrossIndices() {
+        setLanguage(.en)
+        let hints = Set((0..<10).map { timerOnlyHint(at: $0) })
+        XCTAssertGreaterThan(hints.count, 1, "hint bank should actually rotate, not repeat one string")
+    }
+
+    func testTimerOnlyHintHandlesNegativeIndexSafely() {
+        XCTAssertFalse(timerOnlyHint(at: -1).isEmpty)
+    }
 
     func testNotificationPromptBankHasAtLeast20MessagesPerLanguage() {
         XCTAssertGreaterThanOrEqual(NotificationScheduler.promptsEN.count, 20)
         XCTAssertGreaterThanOrEqual(NotificationScheduler.promptsZH.count, 20)
+    }
+
+    func testNotificationPromptsMentionEveryMajorBodyRegion() {
+        let regionsEN = ["neck", "shoulder", "chest", "wrist", "hip", "hamstring", "quad", "calv", "ankle", "back", "spine"]
+        let regionsZH = ["脖子", "肩", "胸", "手腕", "髖", "大腿後側", "大腿前側", "小腿", "腳踝", "背", "脊"]
+        let allEN = NotificationScheduler.promptsEN.joined(separator: " ").lowercased()
+        let allZH = NotificationScheduler.promptsZH.joined(separator: " ")
+        for region in regionsEN {
+            XCTAssertTrue(allEN.contains(region), "no English prompt mentions '\(region)'")
+        }
+        for region in regionsZH {
+            XCTAssertTrue(allZH.contains(region), "no Chinese prompt mentions '\(region)'")
+        }
+    }
+
+    func testNotificationPromptBankStillHasNoDurationPromise() {
+        let digitMinuteEN = try! NSRegularExpression(pattern: #"\d+\s*-?\s*min(ute)?s?\b"#, options: .caseInsensitive)
+        let digitMinuteZH = try! NSRegularExpression(pattern: #"\d+\s*分鐘"#)
+        for prompt in NotificationScheduler.promptsEN {
+            let range = NSRange(prompt.startIndex..., in: prompt)
+            XCTAssertNil(digitMinuteEN.firstMatch(in: prompt, range: range), "'\(prompt)' still promises a specific duration")
+        }
+        for prompt in NotificationScheduler.promptsZH {
+            let range = NSRange(prompt.startIndex..., in: prompt)
+            XCTAssertNil(digitMinuteZH.firstMatch(in: prompt, range: range), "'\(prompt)' still promises a specific duration")
+        }
     }
 
     func testNotificationPromptBankHasNoDuplicates() {
@@ -105,8 +135,6 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(Set(NotificationScheduler.promptsZH).count, NotificationScheduler.promptsZH.count,
                        "Chinese prompt list has duplicate messages")
     }
-
-    // MARK: Offline routine bilingual content
 
     func testOfflineRoutineMovesHaveBothLanguages() throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "routine", withExtension: "json")
@@ -120,16 +148,11 @@ final class LocalizationTests: XCTestCase {
             XCTAssertFalse((move.cue["en"] ?? "").isEmpty, "\(move.key) missing English cue")
             XCTAssertFalse((move.cue["zh"] ?? "").isEmpty, "\(move.key) missing Chinese cue")
         }
-        // Full-body: not just the original hip/hamstring/neck set.
         let keys = Set(moves.map(\.key))
         XCTAssertTrue(keys.contains("chest_opener"))
         XCTAssertTrue(keys.contains("wrist_forearm"))
         XCTAssertTrue(keys.contains("calf_ankle"))
     }
 
-    // MARK: - Helpers
-
-    /// Every `L` case, so a newly added key without a matching translation
-    /// fails this suite instead of silently falling back at runtime.
     private func allLKeys() -> [L] { L.allCases }
 }

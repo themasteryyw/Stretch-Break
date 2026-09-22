@@ -1,36 +1,28 @@
 import SwiftUI
 import SwiftData
 import Charts
+import AudioToolbox
 
 // MARK: - Theme
 
 enum AppTheme: String, CaseIterable, Identifiable {
-    case teal, blush, latte
+    case morandi, latte, blush
 
     var id: String { rawValue }
 
     var color: Color {
         switch self {
-        case .teal: .teal
-        case .blush: Color(red: 1.00, green: 0.745, blue: 0.596)  // Pantone 13-1023 Peach Fuzz (COTY 2024)
-        case .latte: Color(red: 0.643, green: 0.467, blue: 0.392) // Pantone 17-1230 Mocha Mousse (COTY 2025)
+        case .morandi: Color(red: 0.588, green: 0.639, blue: 0.553)
+        case .latte:   Color(red: 0.722, green: 0.576, blue: 0.427)
+        case .blush:   Color(red: 0.851, green: 0.553, blue: 0.561)
         }
     }
 
     var label: String {
         switch self {
-        case .teal: t(.themeTeal)
-        case .blush: t(.themeBlush)
-        case .latte: t(.themeLatte)
-        }
-    }
-
-    /// nil = the app's primary (default) icon.
-    var iconName: String? {
-        switch self {
-        case .teal: nil
-        case .blush: "AppIcon-Pink"
-        case .latte: "AppIcon-Latte"
+        case .morandi: t(.themeMorandi)
+        case .latte:   t(.themeLatte)
+        case .blush:   t(.themeBlush)
         }
     }
 }
@@ -40,9 +32,9 @@ enum AppTheme: String, CaseIterable, Identifiable {
 struct RootView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.scenePhase) private var phase
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     var body: some View {
         TabView {
@@ -82,10 +74,16 @@ struct RootView: View {
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
     @Query(sort: \SessionLog.date, order: .reverse) private var logs: [SessionLog]
-    @AppStorage("goalPerDay") private var goalPerDay = 8
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("startHour") private var startHour = 9
+    @AppStorage("endHour") private var endHour = 18
+    @AppStorage("intervalMin") private var intervalMin = 60
+    @AppStorage("stretchModeRaw") private var stretchModeRaw = StretchMode.video.rawValue
+    @AppStorage("timerMinutes") private var timerMinutes = StretchConfig.defaultTimerMinutes
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
+    private var stretchMode: StretchMode { StretchMode(rawValue: stretchModeRaw) ?? .video }
+    private var goalPerDay: Int { Cfg.computedDailyGoal(startHour: startHour, endHour: endHour, intervalMin: intervalMin) }
 
     @State private var notifAuthorized = true
 
@@ -117,10 +115,32 @@ struct HomeView: View {
                                  value: "\(weekMinutes)", label: t(.minThisWeek))
                     }
 
+                    Picker("", selection: $stretchModeRaw) {
+                        ForEach(StretchMode.allCases) { mode in
+                            Text(mode.label).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 60)
+
+                    if stretchMode == .timer {
+                        Picker(t(.timerDurationLabel), selection: $timerMinutes) {
+                            ForEach(Array(StretchConfig.timerMinutesRange), id: \.self) { m in
+                                Text(t(.minUnit, m)).tag(m)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 80)
+                        .padding(.horizontal, 40)
+                    }
+
                     Button {
                         model.pendingStart = true
                     } label: {
-                        Label(t(.stretchNowButton), systemImage: "play.fill")
+                        Label(stretchMode == .video
+                              ? t(.stretchNowButton, StretchConfig.videoTargetSec / 60)
+                              : t(.stretchNowButtonTimer, timerMinutes),
+                              systemImage: "play.fill")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
@@ -203,9 +223,12 @@ struct SessionFlowView: View {
 
     @AppStorage("askPain") private var askPain = true
     @AppStorage("painAreaCursor") private var painAreaCursor = 0
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("stretchModeRaw") private var stretchModeRaw = StretchMode.video.rawValue
+    @AppStorage("timerMinutes") private var timerMinutes = StretchConfig.defaultTimerMinutes
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
+    private var stretchMode: StretchMode { StretchMode(rawValue: stretchModeRaw) ?? .video }
 
     @State private var step: Step = .loading
     @State private var pool: [StretchVideo] = []
@@ -224,12 +247,12 @@ struct SessionFlowView: View {
     @State private var rewardMilestone = false
 
     private let maxFails = 4
-    private enum Step { case loading, repeatOffer, painBefore, playing, offline, rating, painAfter, reward }
+    private enum Step { case loading, repeatOffer, painBefore, playing, offline, selfGuided, rating, painAfter, reward }
 
     struct RepeatInfo {
         let videoID: String; let title: String
-        let area: String        // localized display label
-        let areaKey: String?    // FocusArea.rawValue — stable across a language switch
+        let area: String
+        let areaKey: String?
         let score: Int
     }
 
@@ -294,8 +317,23 @@ struct SessionFlowView: View {
                     Text(video.channel)
                         .font(.caption).foregroundStyle(.secondary)
 
-                    TimerBar(target: video.durationSec, elapsed: $elapsed)
-                        .padding(.horizontal)
+                    HStack(spacing: 24) {
+                        Button { quickRate(.love) } label: {
+                            Image(systemName: feeling == .love ? "heart.fill" : "heart")
+                                .font(.title2)
+                                .foregroundStyle(feeling == .love ? .pink : .secondary)
+                        }
+                        .accessibilityLabel(t(.likeVideoA11y))
+
+                        Button { quickRate(.bad) } label: {
+                            Image(systemName: feeling == .bad ? "hand.thumbsdown.fill" : "hand.thumbsdown")
+                                .font(.title2)
+                                .foregroundStyle(feeling == .bad ? .red : .secondary)
+                        }
+                        .accessibilityLabel(t(.dislikeVideoA11y))
+                    }
+
+                    SilentTicker(elapsed: $elapsed)
 
                     HStack(spacing: 10) {
                         Button {
@@ -306,7 +344,7 @@ struct SessionFlowView: View {
                         .buttonStyle(.bordered)
 
                         Button(t(.doneEndEarlyButton)) { step = .rating }
-                            .buttonStyle(.borderedProminent).tint(.teal)
+                            .buttonStyle(.borderedProminent).tint(theme)
                     }
 
                     Button {
@@ -327,6 +365,9 @@ struct SessionFlowView: View {
         case .offline:
             OfflineRoutineView(elapsed: $elapsed) { step = .rating }
 
+        case .selfGuided:
+            TimerOnlyView(target: timerMinutes * 60, elapsed: $elapsed) { step = .rating }
+
         case .rating:
             RatingView(feeling: $feeling, feedback: $feedback) {
                 if askPain { step = .painAfter } else { finish() }
@@ -346,10 +387,17 @@ struct SessionFlowView: View {
     // MARK: flow helpers
 
     private func advanceFromPainBefore() {
-        step = (video == nil) ? .offline : .playing
+        step = stretchMode == .timer ? .selfGuided : (video == nil ? .offline : .playing)
     }
 
     private func load() async {
+        area = FocusArea.at(painAreaCursor)
+
+        guard stretchMode == .video else {
+            await MainActor.run { step = askPain ? .painBefore : .selfGuided }
+            return
+        }
+
         VideoStore.shared.setUserVideos(userVideos.map {
             StretchVideo(id: $0.videoID, title: $0.title, channel: t(.channelYourList),
                          durationSec: 240, areas: BodyArea.allCases,
@@ -359,7 +407,6 @@ struct SessionFlowView: View {
 
         await MainActor.run {
             pool = fetched
-            area = FocusArea.at(painAreaCursor)
             video = warmedPickIfUsable(from: fetched) ?? pickNext(from: fetched)
             repeatInfo = computeRepeatInfo()
             if repeatInfo != nil {
@@ -370,6 +417,10 @@ struct SessionFlowView: View {
         }
     }
 
+    private func lengthFiltered(_ source: [StretchVideo]) -> [StretchVideo] {
+        SessionPlanner.lengthFiltered(source, band: StretchConfig.videoDurationBand)
+    }
+
     /// If the most recent check-in scored ≥ 7 for an area (and the stretch wasn't disliked,
     /// and it was recent), offer to repeat that same stretch this time.
     private func computeRepeatInfo() -> RepeatInfo? {
@@ -378,11 +429,8 @@ struct SessionFlowView: View {
         guard RepeatPolicy.shouldOffer(lastScore: score,
                                        feelingRaw: last.feelingRaw,
                                        age: Date().timeIntervalSince(last.date),
-                                       isOffline: last.videoID == "offline-routine")
+                                       isOffline: last.videoID == "offline-routine" || last.videoID == "timer-only")
         else { return nil }
-        // `focusArea` is stored as a FocusArea.rawValue (language-independent); resolve it
-        // to today's localized label for display, falling back gracefully if it doesn't match
-        // any known case (e.g. an older log written before this field existed).
         let key = last.focusArea
         let displayLabel = key.flatMap { FocusArea(rawValue: $0)?.label } ?? key ?? area.label
         return RepeatInfo(videoID: last.videoID, title: last.videoTitle,
@@ -403,13 +451,15 @@ struct SessionFlowView: View {
     }
 
     private func declineRepeat() {
-        step = askPain ? .painBefore : (video == nil ? .offline : .playing)
+        step = askPain ? .painBefore : (stretchMode == .timer ? .selfGuided : (video == nil ? .offline : .playing))
     }
 
-    private func pickNext(from source: [StretchVideo]? = nil) -> StretchVideo? {
+    private func pickNext(from source: [StretchVideo]? = nil, excluding excludeID: String? = nil) -> StretchVideo? {
         let statMap = Dictionary(stats.map { ($0.videoID, $0) }, uniquingKeysWith: { a, _ in a })
-        let recentIDs = Array(logs.prefix(12).map(\.videoID))
-        return Recommender.next(from: source ?? pool, stats: statMap,
+        var recentIDs = Array(logs.prefix(12).map(\.videoID))
+        if let excludeID { recentIDs.insert(excludeID, at: 0) }
+        let targeted = SessionPlanner.targetedPool(source ?? pool, askPain: askPain, targeting: area.relatedBodyAreas)
+        return Recommender.next(from: lengthFiltered(targeted), stats: statMap,
                                 recentIDs: recentIDs, recentAreas: [])
     }
 
@@ -419,7 +469,8 @@ struct SessionFlowView: View {
         guard let w = PlayerWarmer.shared.warmedVideo,
               let match = source.first(where: { $0.id == w.id }),
               !(stats.first(where: { $0.videoID == w.id })?.isBroken ?? false),
-              !logs.prefix(10).contains(where: { $0.videoID == w.id })
+              !logs.prefix(10).contains(where: { $0.videoID == w.id }),
+              !askPain || !Set(match.areas).isDisjoint(with: Set(area.relatedBodyAreas))
         else { return nil }
         return match
     }
@@ -431,14 +482,16 @@ struct SessionFlowView: View {
 
     /// User asked for a different video.
     private func rerollVideo() {
+        let previousID = video?.id
         elapsed = 0
-        video = pickNext()
+        video = pickNext(excluding: previousID)
         if video == nil { step = .offline }
     }
 
     /// Playback failed (150/152 embed-disabled, 100 removed, 5 HTML5, …).
     private func handlePlaybackError(_ code: Int) {
-        if let id = video?.id { statFor(id).isBroken = true; try? ctx.save() }
+        let previousID = video?.id
+        if let id = previousID { statFor(id).isBroken = true; try? ctx.save() }
         failCount += 1
         elapsed = 0
         if failCount >= maxFails {
@@ -446,7 +499,7 @@ struct SessionFlowView: View {
             step = .offline               // always give the user a stretch
             VideoStore.shared.prefetch(force: true)   // refill for next time
         } else {
-            video = pickNext()
+            video = pickNext(excluding: previousID)
             if video == nil { step = .offline }
         }
     }
@@ -458,9 +511,16 @@ struct SessionFlowView: View {
         return created
     }
 
+    private func quickRate(_ f: Feeling) {
+        guard let id = video?.id else { return }
+        feeling = (feeling == f) ? nil : f
+        statFor(id).feelingRaw = feeling?.rawValue
+        try? ctx.save()
+    }
+
     private func finish() {
-        let id = video?.id ?? "offline-routine"
-        let title = video?.title ?? "Offline routine"
+        let id = video?.id ?? (stretchMode == .timer ? "timer-only" : "offline-routine")
+        let title = video?.title ?? (stretchMode == .timer ? "Self-guided timer" : "Offline routine")
 
         let stat = statFor(id)
         stat.timesPlayed += 1
@@ -470,17 +530,18 @@ struct SessionFlowView: View {
 
         let log = SessionLog(
             videoID: id, videoTitle: title,
-            completedSec: max(elapsed, video?.durationSec ?? 180),
+            completedSec: max(elapsed, video?.durationSec ?? (stretchMode == .timer ? timerMinutes * 60 : StretchConfig.videoTargetSec)),
             painBefore: askPain ? painBefore : nil,
             painAfter: askPain ? painAfter : nil,
             feelingRaw: feeling?.rawValue,
-            focusArea: askPain ? area.rawValue : nil)   // stable across a language switch; resolved to a label on read
+            focusArea: askPain ? area.rawValue : nil)
         ctx.insert(log)
         try? ctx.save()
         painAreaCursor += 1        // next session asks about the next body area
 
-        rewardToday = StatsService.todayCount(logs) + 1
-        rewardStreak = StatsService.streak(logs)
+        let logsIncludingThisSession = logs + [log]
+        rewardToday = StatsService.todayCount(logsIncludingThisSession)
+        rewardStreak = StatsService.streak(logsIncludingThisSession)
         rewardMilestone = [7, 30, 50, 100].contains(rewardStreak) || rewardToday == 1
 
         if rewardMilestone && !reduceMotion { showConfetti = true }
@@ -488,29 +549,14 @@ struct SessionFlowView: View {
     }
 }
 
-// MARK: - Timer bar
-
-struct TimerBar: View {
-    let target: Int
+struct SilentTicker: View {
     @Binding var elapsed: Int
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
-
     var body: some View {
-        VStack(spacing: 4) {
-            ProgressView(value: Double(min(elapsed, target)), total: Double(max(target, 1)))
-                .tint(theme)
-            Text("\(mmss(elapsed)) / \(mmss(target))")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .onReceive(tick) { _ in elapsed += 1 }
-    }
-
-    private func mmss(_ s: Int) -> String {
-        String(format: "%d:%02d", s / 60, s % 60)
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onReceive(tick) { _ in elapsed += 1 }
     }
 }
 
@@ -525,9 +571,9 @@ struct OfflineRoutineView: View {
     @State private var remaining = 0
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -589,6 +635,63 @@ struct OfflineRoutineView: View {
     }
 }
 
+struct TimerOnlyView: View {
+    let target: Int
+    @Binding var elapsed: Int
+    let onDone: () -> Void
+    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
+    @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            Text(t(.timerOnlyTitle)).font(.title2.bold()).multilineTextAlignment(.center)
+
+            ProgressRing(value: Double(elapsed), total: Double(max(target, 1)), tint: theme)
+                .frame(width: 220, height: 220)
+                .overlay {
+                    Text(mmss(max(target - elapsed, 0)))
+                        .font(.system(size: 48, weight: .bold, design: .rounded).monospacedDigit())
+                }
+
+            Text(timerOnlyHint(at: elapsed / 15))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal)
+                .id(elapsed / 15)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.3), value: elapsed / 15)
+
+            Spacer()
+            Button(t(.endButton)) { onDone() }
+                .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
+        }
+        .padding()
+        .padding(.top, 44)
+        .padding(.bottom, 20)
+        .onReceive(tick) { _ in
+            let result = SessionPlanner.timerTick(elapsed: elapsed, target: target)
+            elapsed = result.elapsed
+            if result.done {
+                announceCompletion()
+                onDone()
+            }
+        }
+    }
+
+    private func announceCompletion() {
+        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        NotificationScheduler.announceTimerDone()
+    }
+
+    private func mmss(_ s: Int) -> String {
+        String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
 // MARK: - Repeat offer (when last check-in scored high)
 
 struct RepeatOfferView: View {
@@ -596,9 +699,9 @@ struct RepeatOfferView: View {
     let repeatIt: () -> Void
     let somethingNew: () -> Void
 
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -635,14 +738,15 @@ struct RatingView: View {
     @Binding var feedback: FeedbackTag?
     let onSubmit: () -> Void
 
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     var body: some View {
         VStack(spacing: 28) {
             Spacer()
-            Text(t(.howWasThat)).font(.title2.bold())
+
+            Text(t(.howDoYouFeelNow)).font(.title2.bold())
 
             HStack(spacing: 18) {
                 ForEach(Feeling.allCases) { f in
@@ -659,43 +763,26 @@ struct RatingView: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                ForEach(FeedbackTag.allCases) { tag in
-                    Chip(text: tag.label, selected: feedback == tag) {
-                        feedback = (feedback == tag) ? nil : tag
-                    }
-                }
-            }
-
             Spacer()
-            Button(t(.submitButton)) { onSubmit() }
-                .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
-                .disabled(feeling == nil)
-            Button(t(.skipButton)) { onSubmit() }
-                .font(.footnote).foregroundStyle(.secondary)
+            Button {
+                onSubmit()
+            } label: {
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 44))
+            }
+            .tint(theme)
+            .disabled(feeling == nil)
+            .accessibilityLabel(t(.submitButton))
+
+            Button {
+                onSubmit()
+            } label: {
+                Image(systemName: "arrow.right.circle").font(.system(size: 26))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel(t(.skipButton))
         }
         .padding()
         .padding(.bottom, 20)
-    }
-}
-
-struct Chip: View {
-    let text: String
-    let selected: Bool
-    let action: () -> Void
-
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
-
-    var body: some View {
-        Button(action: action) {
-            Text(text)
-                .font(.subheadline)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(selected ? theme : Color(.secondarySystemBackground),
-                            in: Capsule())
-                .foregroundStyle(selected ? .white : .primary)
-        }
     }
 }
 
@@ -707,12 +794,11 @@ struct RewardView: View {
     let milestone: Bool
     let onDone: () -> Void
 
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
-    // Cute pop-in / bounce / sparkle-spin animation state.
     @State private var iconIn = false
     @State private var iconBounce = false
     @State private var sparkleSpin = false
@@ -810,9 +896,9 @@ struct PainView: View {
     let submit: () -> Void
     let skip: () -> Void
 
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     var body: some View {
         VStack(spacing: 26) {
@@ -854,9 +940,9 @@ struct PainView: View {
 
 struct HistoryView: View {
     @Query(sort: \SessionLog.date, order: .reverse) private var logs: [SessionLog]
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     private var dailyCounts: [(day: Date, count: Int)] {
         let cal = Calendar.current
@@ -936,11 +1022,10 @@ struct SettingsView: View {
     @AppStorage("endHour") private var endHour = 18
     @AppStorage("intervalMin") private var intervalMin = 60
     @AppStorage("activeDaysMask") private var activeDaysMask = 62
-    @AppStorage("goalPerDay") private var goalPerDay = 8
     @AppStorage("askPain") private var askPain = true
-    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.teal.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
-    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? .teal }
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
 
     @State private var linkText = ""
     @State private var authDenied = false
@@ -977,7 +1062,6 @@ struct SettingsView: View {
                 }
 
                 Section(t(.sectionGoalPrompts)) {
-                    Stepper(t(.dailyGoal, goalPerDay), value: $goalPerDay, in: 3...16)
                     Toggle(t(.askDiscomfortToggle), isOn: $askPain)
                 }
 
@@ -995,11 +1079,10 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    HStack(spacing: 16) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 14) {
                         ForEach(AppTheme.allCases) { t in
                             Button {
                                 themeColorRaw = t.rawValue
-                                Task { try? await UIApplication.shared.setAlternateIconName(t.iconName) }
                             } label: {
                                 VStack(spacing: 6) {
                                     Circle()
@@ -1011,6 +1094,7 @@ struct SettingsView: View {
                                             }
                                         }
                                     Text(t.label).font(.caption).foregroundStyle(.secondary)
+                                        .lineLimit(1).minimumScaleFactor(0.8)
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -1060,13 +1144,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(t(.settingsNavTitle))
+            .tint(theme)
             .onChange(of: startHour) { rescheduleSoon() }
             .onChange(of: endHour) { rescheduleSoon() }
             .onChange(of: intervalMin) { rescheduleSoon() }
             .onChange(of: activeDaysMask) { rescheduleSoon() }
             .onChange(of: appLanguageRaw) {
-                NotificationScheduler.registerCategory()   // pick up new action-button titles
-                rescheduleSoon()                           // and new prompt strings
+                NotificationScheduler.registerCategory()
+                rescheduleSoon()
             }
             .task {
                 authDenied = await NotificationScheduler.authStatus() == .denied

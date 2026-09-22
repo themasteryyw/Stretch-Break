@@ -8,7 +8,6 @@ enum Cfg {
     static var endHour: Int        { int("endHour", 18) }
     static var intervalMin: Int    { max(15, int("intervalMin", 60)) }
     static var activeDaysMask: Int { int("activeDaysMask", 62) }   // Mon–Fri (bits for weekday 2…6)
-    static var goalPerDay: Int     { int("goalPerDay", 8) }
     static var onboarded: Bool     { bool("onboarded", false) }
     static var askPain: Bool       { bool("askPain", true) }
 
@@ -21,6 +20,18 @@ enum Cfg {
     private static func bool(_ k: String, _ d: Bool) -> Bool {
         UserDefaults.standard.object(forKey: k) as? Bool ?? d
     }
+
+    static func computedDailyGoal(startHour: Int, endHour: Int, intervalMin: Int) -> Int {
+        guard intervalMin > 0, endHour > startHour else { return 1 }
+        var minute = startHour * 60
+        let endMinute = endHour * 60
+        var count = 0
+        while minute <= endMinute {
+            count += 1
+            minute += intervalMin
+        }
+        return max(1, count)
+    }
 }
 
 // MARK: - Notification scheduling
@@ -30,55 +41,57 @@ enum NotificationScheduler {
     static let categoryID = "STRETCH"
     private static let maxPending = 60
 
-    /// 22 rotating reminder messages per language, covering the whole body — not just
-    /// the lower back / sciatic area — so the same line rarely repeats.
     static let promptsEN = [
-        "Time to stand up 🧘 Take 3 minutes",
-        "Sitting break — loosen up your hips",
+        "Your body's been asking for a break — got a minute? 👀",
+        "Psst — still sitting? Let's fix that 🧘",
+        "Sitting break — your hips will thank you",
         "Your sciatic nerve says thanks. Quick stretch?",
         "Stand up! Roll those shoulders 🌀",
-        "3-minute micro-stretch, then back to focus",
+        "Quick reset, then back to focus",
         "Shift position, get the blood moving 🩵",
         "Your neck's been in one spot too long — reset it",
-        "Quick stretch break: unlock those hips",
+        "Unlock those hips — quick stretch break",
         "Give your lower back a breather",
         "Stand tall, open up that chest 🌿",
         "Wrists tired from typing? Give them a stretch",
         "Legs feel stiff? Time for a quick stretch",
         "A short break now beats a sore back later",
-        "Your body could use a 3-minute reset",
+        "Quads feeling tight? Stretch the front of your thighs",
         "Get up, shake it out, come back sharper",
         "Time to move — your future self will thank you",
-        "Tight shoulders? Let's fix that in 3 minutes",
-        "Desk posture check — time for a stretch",
+        "Tight shoulders? Let's fix that",
+        "Desk posture check — how are you sitting right now?",
         "Stretch break: hamstrings and hips need love",
         "Reset your spine with a quick stretch",
         "Ankles and calves have been idle — wake them up",
-        "You've earned a 3-minute stretch break"
+        "Ready to move? Tap in and let's go 💪",
+        "How's your body feeling right now? Let's find out"
     ]
     static let promptsZH = [
-        "起身時間到了 🧘 花 3 分鐘動一動",
-        "坐太久了 — 放鬆一下髖部吧",
+        "你的身體在跟你抗議了 — 有空嗎？👀",
+        "還坐著呀？來動一動吧 🧘",
+        "坐太久了 — 你的髖部會謝謝你",
         "你的坐骨神經說聲謝謝，來個伸展？",
         "起來動一動！轉轉肩膀 🌀",
-        "3 分鐘微伸展，然後回去專心",
+        "快速重整一下，再回去專心",
         "換個姿勢，讓血液循環一下 🩵",
         "脖子固定太久了，放鬆一下吧",
-        "伸展小休息：解放一下髖部",
+        "解放一下髖部 — 伸展小休息",
         "讓下背喘口氣",
         "站起來，展開胸口 🌿",
         "手腕打字打累了嗎？伸展一下",
         "腿覺得僵硬嗎？該伸展了",
         "現在稍微休息一下，勝過之後腰痠背痛",
-        "身體需要 3 分鐘重新開機",
+        "大腿前側緊繃嗎？伸展一下",
         "起來甩一甩，回來更有精神",
         "動一動吧 — 未來的你會感謝現在的你",
-        "肩膀緊繃嗎？3 分鐘幫你放鬆",
-        "檢查一下坐姿 — 該伸展了",
+        "肩膀緊繃嗎？來放鬆一下",
+        "檢查一下坐姿 — 你現在怎麼坐的？",
         "伸展時間：大腿後側和髖部需要照顧",
         "來個伸展，讓脊椎重新歸位",
         "腳踝和小腿太久沒動了，喚醒它們",
-        "你值得這 3 分鐘的伸展休息"
+        "準備好動一動了嗎？點進來一起做 💪",
+        "現在身體感覺如何？來看看吧"
     ]
     private static var prompts: [String] {
         AppLanguage.current == .zh ? promptsZH : promptsEN
@@ -92,7 +105,6 @@ enum NotificationScheduler {
         await center.notificationSettings().authorizationStatus
     }
 
-    /// Re-run after a language change so notification action buttons pick up the new titles.
     static func registerCategory() {
         let start  = UNNotificationAction(identifier: "START",  title: t(.notifActionStart), options: [.foreground])
         let snooze = UNNotificationAction(identifier: "SNOOZE", title: t(.notifActionSnooze))
@@ -143,6 +155,16 @@ enum NotificationScheduler {
                 minute += Cfg.intervalMin
             }
         }
+    }
+
+    static func announceTimerDone() {
+        let content = UNMutableNotificationContent()
+        content.title = "StretchBreak"
+        content.body = t(.timerDoneBody)
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        center.add(UNNotificationRequest(identifier: "timer-done-\(UUID().uuidString)",
+                                         content: content, trigger: trigger), withCompletionHandler: nil)
     }
 
     static func snooze() async {
@@ -198,7 +220,7 @@ protocol VideoProvider {
 struct YouTubeProvider: VideoProvider {
     let apiKey: String
 
-    private static let queries: [(q: String, areas: [BodyArea], intensity: Intensity)] = [
+    private static let queriesEN: [(q: String, areas: [BodyArea], intensity: Intensity)] = [
         ("piriformis stretch follow along 5 minutes", [.piriformis, .glutes], .gentle),
         ("sciatica hip flexor stretch routine follow along", [.hipFlexors, .lowerBack], .gentle),
         ("hamstring stretch for lower back pain", [.hamstrings, .lowerBack], .gentle),
@@ -211,24 +233,45 @@ struct YouTubeProvider: VideoProvider {
         ("quad stretch standing routine follow along", [.quads, .hipFlexors], .gentle),
         ("calf ankle stretch standing routine", [.calvesAnkles], .gentle)
     ]
+    private static let queriesZH: [(q: String, areas: [BodyArea], intensity: Intensity)] = [
+        ("梨狀肌 伸展 跟著做", [.piriformis, .glutes], .gentle),
+        ("坐骨神經 髖屈肌 伸展 跟著做", [.hipFlexors, .lowerBack], .gentle),
+        ("大腿後側 伸展 下背痛", [.hamstrings, .lowerBack], .gentle),
+        ("胸椎 活動度 伸展", [.thoracic, .neck], .moderate),
+        ("久坐 全身伸展 辦公室", BodyArea.allCases, .gentle),
+        ("下背 伸展 站姿 溫和", [.lowerBack, .glutes], .gentle),
+        ("肩膀 活動度 伸展 站姿", [.shoulders, .neck], .gentle),
+        ("胸口 伸展 門框", [.chest, .shoulders], .gentle),
+        ("手腕 前臂 伸展 打字", [.wristsForearms], .gentle),
+        ("大腿前側 伸展 站姿 跟著做", [.quads, .hipFlexors], .gentle),
+        ("小腿 腳踝 伸展 站姿", [.calvesAnkles], .gentle)
+    ]
+    private static var queries: [(q: String, areas: [BodyArea], intensity: Intensity)] {
+        AppLanguage.current == .zh ? queriesZH : queriesEN
+    }
+
+    static func searchURL(query: String, apiKey: String, relevanceLanguage: String = "en") -> URL? {
+        var comps = URLComponents(string: "https://www.googleapis.com/youtube/v3/search")!
+        comps.queryItems = [
+            .init(name: "part", value: "snippet"),
+            .init(name: "q", value: query),
+            .init(name: "type", value: "video"),
+            .init(name: "videoEmbeddable", value: "true"),
+            .init(name: "videoDuration", value: "any"),
+            .init(name: "maxResults", value: "8"),
+            .init(name: "relevanceLanguage", value: relevanceLanguage),
+            .init(name: "safeSearch", value: "strict"),
+            .init(name: "key", value: apiKey)
+        ]
+        return comps.url
+    }
 
     func pool() async -> [StretchVideo] {
         var found: [String: StretchVideo] = [:]        // id -> video (search result, unverified)
 
         for spec in Self.queries {
-            var comps = URLComponents(string: "https://www.googleapis.com/youtube/v3/search")!
-            comps.queryItems = [
-                .init(name: "part", value: "snippet"),
-                .init(name: "q", value: spec.q),
-                .init(name: "type", value: "video"),
-                .init(name: "videoEmbeddable", value: "true"),
-                .init(name: "videoDuration", value: "medium"),
-                .init(name: "maxResults", value: "8"),
-                .init(name: "relevanceLanguage", value: "en"),
-                .init(name: "safeSearch", value: "strict"),
-                .init(name: "key", value: apiKey)
-            ]
-            guard let data = await get(comps.url),
+            let lang = AppLanguage.current == .zh ? "zh-Hant" : "en"
+            guard let data = await get(Self.searchURL(query: spec.q, apiKey: apiKey, relevanceLanguage: lang)),
                   let decoded = try? JSONDecoder().decode(YTSearchResponse.self, from: data)
             else { continue }
 
@@ -346,6 +389,30 @@ private extension String {
 }
 
 // MARK: - Recommender
+
+enum SessionPlanner {
+    static func lengthFiltered(_ source: [StretchVideo], band: ClosedRange<Int>) -> [StretchVideo] {
+        let filtered = source.filter { band.contains($0.durationSec) }
+        return filtered.count >= 2 ? filtered : source
+    }
+
+    static func areaFiltered(_ source: [StretchVideo], targeting areas: [BodyArea]) -> [StretchVideo] {
+        let wanted = Set(areas)
+        let filtered = source.filter { !Set($0.areas).isDisjoint(with: wanted) }
+        return filtered.count >= 2 ? filtered : source
+    }
+
+    static func targetedPool(_ source: [StretchVideo], askPain: Bool, targeting areas: [BodyArea]) -> [StretchVideo] {
+        guard askPain else { return source }
+        return areaFiltered(source, targeting: areas)
+    }
+
+    static func timerTick(elapsed: Int, target: Int) -> (elapsed: Int, done: Bool) {
+        guard elapsed < target else { return (elapsed, false) }
+        let next = elapsed + 1
+        return (next, next >= target)
+    }
+}
 
 enum Recommender {
     /// Picks the next video: never repeats within a sliding window, prefers unseen,

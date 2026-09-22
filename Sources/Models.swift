@@ -25,6 +25,25 @@ enum BodyArea: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum StretchMode: String, CaseIterable, Identifiable {
+    case video, timer
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .video: t(.modeVideo)
+        case .timer: t(.modeTimer)
+        }
+    }
+}
+
+enum StretchConfig {
+    static let videoTargetSec = 300
+    static let videoDurationBand: ClosedRange<Int> = 240...600
+    static let timerMinutesRange = 1...30
+    static let defaultTimerMinutes = 5
+}
+
 enum Intensity: String, Codable, CaseIterable {
     case gentle, moderate
     var label: String { self == .gentle ? t(.intensityGentle) : t(.intensityModerate) }
@@ -42,6 +61,13 @@ enum Feeling: Int, Codable, CaseIterable, Identifiable {
 enum FeedbackTag: String, Codable, CaseIterable, Identifiable {
     case tooHard, justRight, tooEasy
     var id: String { rawValue }
+    var emoji: String {
+        switch self {
+        case .tooHard:   "😮‍💨"
+        case .justRight: "👌"
+        case .tooEasy:   "😴"
+        }
+    }
     var label: String {
         switch self {
         case .tooHard:   t(.feedbackTooHard)
@@ -111,7 +137,6 @@ struct StretchVideo: Codable, Identifiable, Hashable {
 }
 
 /// Body areas the discomfort check-in rotates through, so consecutive prompts differ.
-/// Covers the whole body, not just the lower back / sciatic region.
 enum FocusArea: String, CaseIterable {
     case lowerBack, leftHip, rightHip, hamstrings, neckShoulders, piriformis
     case upperBack, chest, wristsForearms, quads, calvesAnkles
@@ -133,6 +158,22 @@ enum FocusArea: String, CaseIterable {
     static func at(_ cursor: Int) -> FocusArea {
         allCases[((cursor % allCases.count) + allCases.count) % allCases.count]
     }
+
+    var relatedBodyAreas: [BodyArea] {
+        switch self {
+        case .lowerBack:      [.lowerBack]
+        case .leftHip:        [.hipFlexors, .glutes, .piriformis]
+        case .rightHip:       [.hipFlexors, .glutes, .piriformis]
+        case .hamstrings:     [.hamstrings]
+        case .neckShoulders:  [.neck, .shoulders]
+        case .piriformis:     [.piriformis, .glutes]
+        case .upperBack:      [.thoracic]
+        case .chest:          [.chest]
+        case .wristsForearms: [.wristsForearms]
+        case .quads:          [.quads, .hipFlexors]
+        case .calvesAnkles:   [.calvesAnkles]
+        }
+    }
 }
 
 /// A YouTube link the user pasted in Settings.
@@ -152,8 +193,8 @@ enum FocusArea: String, CaseIterable {
 
 struct RoutineMove: Codable, Identifiable {
     var id: String { key }
-    let key: String            // stable identifier, independent of language
-    let symbol: String         // SF Symbol
+    let key: String
+    let symbol: String        // SF Symbol
     let seconds: Int
     let name: [String: String] // "en" / "zh"
     let cue: [String: String]
