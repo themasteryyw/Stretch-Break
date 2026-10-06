@@ -46,6 +46,8 @@ struct RootView: View {
                 .tabItem { Label(t(.tabSettings), systemImage: "gearshape") }
         }
         .tint(theme)
+        .environment(\.locale, AppLanguage.current.locale)
+        .id(appLanguageRaw)
         .fullScreenCover(isPresented: $model.showOnboarding, onDismiss: {
             Task { await NotificationScheduler.reschedule() }
         }) {
@@ -79,6 +81,7 @@ struct HomeView: View {
     @AppStorage("intervalMin") private var intervalMin = 60
     @AppStorage("stretchModeRaw") private var stretchModeRaw = StretchMode.video.rawValue
     @AppStorage("timerMinutes") private var timerMinutes = StretchConfig.defaultTimerMinutes
+    @AppStorage("videoTargetMinutes") private var videoTargetMinutes = StretchConfig.defaultVideoTargetMinutes
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
@@ -138,7 +141,7 @@ struct HomeView: View {
                         model.pendingStart = true
                     } label: {
                         Label(stretchMode == .video
-                              ? t(.stretchNowButton, StretchConfig.videoTargetSec / 60)
+                              ? t(.stretchNowButton, videoTargetMinutes)
                               : t(.stretchNowButtonTimer, timerMinutes),
                               systemImage: "play.fill")
                             .font(.headline)
@@ -151,10 +154,17 @@ struct HomeView: View {
 
                     Group {
                         if !notifAuthorized {
-                            Text(t(.notifOffWarning))
-                                .foregroundStyle(.red)
+                            Button {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Text(t(.notifOffWarning))
+                                    .underline()
+                            }
+                            .foregroundStyle(.red)
                         } else if let next {
-                            Text(t(.nextReminder, next.formatted(date: .omitted, time: .shortened)))
+                            Text(t(.nextReminder, next.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(AppLanguage.current.locale))))
                                 .foregroundStyle(.secondary)
                         } else {
                             Text(t(.outsideReminderHours))
@@ -194,7 +204,7 @@ struct StatCard: View {
 struct ProgressRing: View {
     let value: Double
     let total: Double
-    var tint: Color = .teal
+    var tint: Color = AppTheme.morandi.color
     private var pct: Double { total <= 0 ? 0 : min(1, value / total) }
 
     var body: some View {
@@ -225,6 +235,7 @@ struct SessionFlowView: View {
     @AppStorage("painAreaCursor") private var painAreaCursor = 0
     @AppStorage("stretchModeRaw") private var stretchModeRaw = StretchMode.video.rawValue
     @AppStorage("timerMinutes") private var timerMinutes = StretchConfig.defaultTimerMinutes
+    @AppStorage("videoTargetMinutes") private var videoTargetMinutes = StretchConfig.defaultVideoTargetMinutes
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
@@ -275,7 +286,7 @@ struct SessionFlowView: View {
         }
         .onDisappear { rewarmNext() }
         .onChange(of: elapsed) { _, e in
-            if step == .playing, let v = video, e >= min(v.durationSec, 420) {
+            if step == .playing, let v = video, e >= min(v.durationSec, videoTargetMinutes * 60 + 60) {
                 step = .rating
             }
         }
@@ -418,7 +429,7 @@ struct SessionFlowView: View {
     }
 
     private func lengthFiltered(_ source: [StretchVideo]) -> [StretchVideo] {
-        SessionPlanner.lengthFiltered(source, band: StretchConfig.videoDurationBand)
+        SessionPlanner.lengthFiltered(source, band: StretchConfig.videoDurationBand(forTargetMinutes: videoTargetMinutes))
     }
 
     /// If the most recent check-in scored ≥ 7 for an area (and the stretch wasn't disliked,
@@ -530,7 +541,7 @@ struct SessionFlowView: View {
 
         let log = SessionLog(
             videoID: id, videoTitle: title,
-            completedSec: max(elapsed, video?.durationSec ?? (stretchMode == .timer ? timerMinutes * 60 : StretchConfig.videoTargetSec)),
+            completedSec: max(elapsed, video?.durationSec ?? (stretchMode == .timer ? timerMinutes * 60 : videoTargetMinutes * 60)),
             painBefore: askPain ? painBefore : nil,
             painAfter: askPain ? painAfter : nil,
             feelingRaw: feeling?.rawValue,
@@ -539,12 +550,12 @@ struct SessionFlowView: View {
         try? ctx.save()
         painAreaCursor += 1        // next session asks about the next body area
 
-        let logsIncludingThisSession = logs + [log]
+        let logsIncludingThisSession = SessionPlanner.logsIncludingSession(logs, newLog: log)
         rewardToday = StatsService.todayCount(logsIncludingThisSession)
         rewardStreak = StatsService.streak(logsIncludingThisSession)
         rewardMilestone = [7, 30, 50, 100].contains(rewardStreak) || rewardToday == 1
 
-        if rewardMilestone && !reduceMotion { showConfetti = true }
+        if !reduceMotion { showConfetti = true }
         step = .reward
     }
 }
@@ -639,6 +650,7 @@ struct TimerOnlyView: View {
     let target: Int
     @Binding var elapsed: Int
     let onDone: () -> Void
+    @State private var moves: [RoutineMove] = []
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
@@ -657,12 +669,26 @@ struct TimerOnlyView: View {
                         .font(.system(size: 48, weight: .bold, design: .rounded).monospacedDigit())
                 }
 
-            Text(timerOnlyHint(at: elapsed / 15))
-                .font(.subheadline).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).padding(.horizontal)
-                .id(elapsed / 15)
+            if let move = RoutineMove.current(in: moves, at: elapsed) {
+                VStack(spacing: 8) {
+                    Image(systemName: move.symbol)
+                        .font(.system(size: 36))
+                        .foregroundStyle(theme)
+                        .symbolRenderingMode(.hierarchical)
+                    Text(move.localizedName).font(.headline).multilineTextAlignment(.center)
+                    Text(move.localizedCue)
+                        .font(.subheadline).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal)
+                .id(move.key)
                 .transition(.opacity)
-                .animation(.easeInOut(duration: 0.3), value: elapsed / 15)
+                .animation(.easeInOut(duration: 0.3), value: move.key)
+            } else {
+                Text(timerOnlyHint(at: 0))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).padding(.horizontal)
+            }
 
             Spacer()
             Button(t(.endButton)) { onDone() }
@@ -671,6 +697,7 @@ struct TimerOnlyView: View {
         .padding()
         .padding(.top, 44)
         .padding(.bottom, 20)
+        .onAppear { moves = RoutineMove.loadAll() }
         .onReceive(tick) { _ in
             let result = SessionPlanner.timerTick(elapsed: elapsed, target: target)
             elapsed = result.elapsed
@@ -1001,7 +1028,7 @@ struct HistoryView: View {
                                     Text(feeling.emoji)
                                 }
                             }
-                            Text(log.date.formatted(date: .abbreviated, time: .shortened))
+                            Text(log.date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLanguage.current.locale)))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -1023,6 +1050,7 @@ struct SettingsView: View {
     @AppStorage("intervalMin") private var intervalMin = 60
     @AppStorage("activeDaysMask") private var activeDaysMask = 62
     @AppStorage("askPain") private var askPain = true
+    @AppStorage("videoTargetMinutes") private var videoTargetMinutes = StretchConfig.defaultVideoTargetMinutes
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
@@ -1063,6 +1091,17 @@ struct SettingsView: View {
 
                 Section(t(.sectionGoalPrompts)) {
                     Toggle(t(.askDiscomfortToggle), isOn: $askPain)
+                }
+
+                Section {
+                    Picker(t(.videoLengthLabel), selection: $videoTargetMinutes) {
+                        ForEach(StretchConfig.videoTargetMinutesOptions, id: \.self) { m in
+                            Text(t(.minUnit, m)).tag(m)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text(t(.sectionVideoLength))
                 }
 
                 Section {
@@ -1152,6 +1191,7 @@ struct SettingsView: View {
             .onChange(of: appLanguageRaw) {
                 NotificationScheduler.registerCategory()
                 rescheduleSoon()
+                VideoStore.shared.prefetch()
             }
             .task {
                 authDenied = await NotificationScheduler.authStatus() == .denied
@@ -1180,6 +1220,8 @@ struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("onboarded") private var onboarded = false
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
     @State private var page = 0
 
     var body: some View {
@@ -1214,7 +1256,7 @@ struct OnboardingView: View {
                     }
                 }
             }
-            .buttonStyle(.borderedProminent).tint(.teal).controlSize(.large)
+            .buttonStyle(.borderedProminent).tint(theme).controlSize(.large)
             .padding()
 
             if page == 2 {
@@ -1234,12 +1276,15 @@ struct OnboardPage: View {
     let title: String
     let message: String
 
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
+
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
             Image(systemName: symbol)
                 .font(.system(size: 80))
-                .foregroundStyle(.teal)
+                .foregroundStyle(theme)
                 .symbolRenderingMode(.hierarchical)
             Text(title).font(.title.bold()).multilineTextAlignment(.center)
             Text(message)

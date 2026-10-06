@@ -11,6 +11,10 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         }
     }
 
+    var locale: Locale { Locale(identifier: self == .zh ? "zh-Hant" : "en") }
+    var youTubeRelevanceLanguage: String { self == .zh ? "zh-Hant" : "en" }
+    var youTubeRegionCode: String? { self == .zh ? "TW" : nil }
+
     static var current: AppLanguage {
         if let raw = UserDefaults.standard.string(forKey: "appLanguage"),
            let lang = AppLanguage(rawValue: raw) {
@@ -47,6 +51,7 @@ enum L: String, CaseIterable {
 
     case settingsNavTitle, sectionReminderHours, stepperStart, stepperEnd, intervalLabel, minUnit
     case sectionGoalPrompts, askDiscomfortToggle
+    case sectionVideoLength, videoLengthLabel
     case modeVideo, modeTimer, timerDurationLabel
     case sectionAppearance, appearanceFooter
     case sectionLanguage, languageFooter
@@ -153,6 +158,8 @@ private let strings: [L: [AppLanguage: String]] = [
     .minUnit:             [.en: "%d min", .zh: "%d 分鐘"],
     .sectionGoalPrompts:  [.en: "Goal & prompts", .zh: "目標與提示"],
     .askDiscomfortToggle: [.en: "Ask discomfort each time", .zh: "每次都詢問不適度"],
+    .sectionVideoLength: [.en: "Video length", .zh: "影片長度"],
+    .videoLengthLabel:   [.en: "Video length", .zh: "影片長度"],
     .modeVideo:          [.en: "Video", .zh: "影片"],
     .modeTimer:          [.en: "Timer", .zh: "計時"],
     .timerDurationLabel: [.en: "Duration", .zh: "時間長度"],
@@ -167,8 +174,8 @@ private let strings: [L: [AppLanguage: String]] = [
     .addButton:           [.en: "Add", .zh: "新增"],
     .sectionVideoSources: [.en: "Video sources", .zh: "影片來源"],
     .videoSourcesFooterWithKey: [
-        .en: "YouTube API key set: fetches embeddable 3–5 min stretch videos, rotating by body area and avoiding repeats.",
-        .zh: "已設定 YouTube API 金鑰：會抓取可嵌入的 3–5 分鐘伸展影片，依身體部位輪流且避免重複。"],
+        .en: "YouTube API key set: fetches embeddable stretch videos, rotating by body area and avoiding repeats.",
+        .zh: "已設定 YouTube API 金鑰：會抓取可嵌入的伸展影片，依身體部位輪流且避免重複。"],
     .videoSourcesFooterNoKey: [
         .en: "No API key: uses the built-in timed routine. Add links above for your own list, or set YTAPIKey in project.yml.",
         .zh: "未設定金鑰：使用內建計時伸展組。可在上方新增自己的影片清單，或在 project.yml 設定 YTAPIKey。"],
@@ -181,8 +188,8 @@ private let strings: [L: [AppLanguage: String]] = [
 
     .onboard1Title:  [.en: "Sitting compresses the sciatic nerve", .zh: "久坐會壓迫坐骨神經"],
     .onboard1Message:[
-        .en: "A 3–5 minute micro-stretch every hour meaningfully lowers discomfort across your whole body — lower back, hips, neck, shoulders and more. This app does one thing: remind you on time and hand you a non-repeating stretch.",
-        .zh: "每小時做 3–5 分鐘的微伸展，能有效降低全身的不適感 — 下背、髖部、頸肩等都涵蓋在內。這個 App 只做一件事：準時提醒你，並提供不重複的伸展內容。"],
+        .en: "A quick stretch every hour meaningfully lowers discomfort across your whole body — lower back, hips, neck, shoulders and more. This app does one thing: remind you on time and hand you a non-repeating stretch.",
+        .zh: "每小時做個快速伸展，能有效降低全身的不適感 — 下背、髖部、頸肩等都涵蓋在內。這個 App 只做一件事：準時提醒你，並提供不重複的伸展內容。"],
     .onboard2Title:  [.en: "Set your working hours", .zh: "設定你的工作時段"],
     .onboard2Message:[
         .en: "Reminders fire only during the hours and days you pick — silent the rest of the time. Change it anytime in Settings.",

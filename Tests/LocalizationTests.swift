@@ -155,4 +155,40 @@ final class LocalizationTests: XCTestCase {
     }
 
     private func allLKeys() -> [L] { L.allCases }
+
+    func testTodayAndHistoryStringsSwitchToTraditionalChinese() {
+        let keys: [L] = [.tabToday, .tabHistory, .standUpsToday, .dayStreak, .minThisWeek,
+                         .historyNavTitle, .historyChartTitle, .historyRecentSection, .historyNoLogsYet]
+        for key in keys {
+            setLanguage(.en)
+            let en = t(key)
+            setLanguage(.zh)
+            let zh = t(key)
+            XCTAssertNotEqual(en, zh, "\(key) did not change when switching to 繁體中文")
+            XCTAssertTrue(zh.unicodeScalars.contains { (0x4E00...0x9FFF).contains($0.value) },
+                          "\(key) zh text has no Chinese characters: \(zh)")
+        }
+    }
+
+    func testDateLocaleFollowsAppLanguage() {
+        XCTAssertEqual(AppLanguage.zh.locale.identifier, "zh-Hant")
+        XCTAssertEqual(AppLanguage.en.locale.identifier, "en")
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let zh = date.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(AppLanguage.zh.locale))
+        let en = date.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(AppLanguage.en.locale))
+        XCTAssertNotEqual(zh, en)
+        XCTAssertTrue(zh.contains("年") || zh.contains("月"), zh)
+    }
+
+    func testYouTubeSearchUsesTraditionalChineseWhenLanguageIsZh() throws {
+        XCTAssertEqual(AppLanguage.zh.youTubeRelevanceLanguage, "zh-Hant")
+        XCTAssertEqual(AppLanguage.zh.youTubeRegionCode, "TW")
+        XCTAssertEqual(AppLanguage.en.youTubeRelevanceLanguage, "en")
+        XCTAssertNil(AppLanguage.en.youTubeRegionCode)
+        let url = try XCTUnwrap(YouTubeProvider.searchURL(query: "伸展", apiKey: "k",
+                                                          relevanceLanguage: "zh-Hant", regionCode: "TW"))
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
+        XCTAssertEqual(items?.first { $0.name == "regionCode" }?.value, "TW")
+        XCTAssertEqual(items?.first { $0.name == "relevanceLanguage" }?.value, "zh-Hant")
+    }
 }

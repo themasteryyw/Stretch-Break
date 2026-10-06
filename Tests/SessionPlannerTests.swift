@@ -11,21 +11,32 @@ final class SessionPlannerTests: XCTestCase {
     func testFiltersToVideoBand() {
         let pool = [vid("a", durationSec: 120), vid("b", durationSec: 300),
                     vid("c", durationSec: 450), vid("d", durationSec: 900)]
-        let filtered = SessionPlanner.lengthFiltered(pool, band: StretchConfig.videoDurationBand)
+        let filtered = SessionPlanner.lengthFiltered(pool, band: StretchConfig.videoDurationBand(forTargetMinutes: 5))
         XCTAssertEqual(Set(filtered.map(\.id)), ["b", "c"])
     }
 
     func testFallsBackToFullPoolWhenBandTooThin() {
         let pool = [vid("a", durationSec: 120), vid("b", durationSec: 300), vid("c", durationSec: 90)]
-        let filtered = SessionPlanner.lengthFiltered(pool, band: StretchConfig.videoDurationBand)
+        let filtered = SessionPlanner.lengthFiltered(pool, band: StretchConfig.videoDurationBand(forTargetMinutes: 5))
         XCTAssertEqual(filtered.count, pool.count)
     }
 
+    func testVideoDurationBandScalesWithTarget() {
+        let band5 = StretchConfig.videoDurationBand(forTargetMinutes: 5)
+        let band10 = StretchConfig.videoDurationBand(forTargetMinutes: 10)
+        XCTAssertLessThan(band5.upperBound, band10.upperBound)
+        XCTAssertLessThan(band5.lowerBound, band10.lowerBound)
+        XCTAssertTrue(band5.contains(300))
+        XCTAssertTrue(band10.contains(600))
+        XCTAssertFalse(band5.contains(900), "a 15 min video shouldn't satisfy a 5 min target's band")
+    }
+
     func testStretchConfigDefaults() {
-        XCTAssertEqual(StretchConfig.videoTargetSec, 300)
+        XCTAssertEqual(StretchConfig.defaultVideoTargetMinutes, 5)
         XCTAssertEqual(StretchConfig.defaultTimerMinutes, 5)
         XCTAssertTrue(StretchConfig.timerMinutesRange.contains(3))
         XCTAssertTrue(StretchConfig.timerMinutesRange.contains(5))
+        XCTAssertEqual(StretchConfig.videoTargetMinutesOptions, [5, 10, 15, 20])
     }
 
     func testExactlyTwoStretchModes() {

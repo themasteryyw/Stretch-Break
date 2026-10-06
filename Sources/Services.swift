@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import UserNotifications
 
 // MARK: - Config (UserDefaults-backed, defaults mirrored in @AppStorage in the views)
@@ -250,7 +251,7 @@ struct YouTubeProvider: VideoProvider {
         AppLanguage.current == .zh ? queriesZH : queriesEN
     }
 
-    static func searchURL(query: String, apiKey: String, relevanceLanguage: String = "en") -> URL? {
+    static func searchURL(query: String, apiKey: String, relevanceLanguage: String = "en", regionCode: String? = nil) -> URL? {
         var comps = URLComponents(string: "https://www.googleapis.com/youtube/v3/search")!
         comps.queryItems = [
             .init(name: "part", value: "snippet"),
@@ -263,6 +264,7 @@ struct YouTubeProvider: VideoProvider {
             .init(name: "safeSearch", value: "strict"),
             .init(name: "key", value: apiKey)
         ]
+        if let regionCode { comps.queryItems?.append(.init(name: "regionCode", value: regionCode)) }
         return comps.url
     }
 
@@ -270,8 +272,10 @@ struct YouTubeProvider: VideoProvider {
         var found: [String: StretchVideo] = [:]        // id -> video (search result, unverified)
 
         for spec in Self.queries {
-            let lang = AppLanguage.current == .zh ? "zh-Hant" : "en"
-            guard let data = await get(Self.searchURL(query: spec.q, apiKey: apiKey, relevanceLanguage: lang)),
+            let lang = AppLanguage.current
+            guard let data = await get(Self.searchURL(query: spec.q, apiKey: apiKey,
+                                                      relevanceLanguage: lang.youTubeRelevanceLanguage,
+                                                      regionCode: lang.youTubeRegionCode)),
                   let decoded = try? JSONDecoder().decode(YTSearchResponse.self, from: data)
             else { continue }
 
@@ -405,6 +409,11 @@ enum SessionPlanner {
     static func targetedPool(_ source: [StretchVideo], askPain: Bool, targeting areas: [BodyArea]) -> [StretchVideo] {
         guard askPain else { return source }
         return areaFiltered(source, targeting: areas)
+    }
+
+    static func logsIncludingSession(_ logs: [SessionLog], newLog: SessionLog) -> [SessionLog] {
+        let alreadyIncluded = logs.contains { $0.persistentModelID == newLog.persistentModelID }
+        return alreadyIncluded ? logs : logs + [newLog]
     }
 
     static func timerTick(elapsed: Int, target: Int) -> (elapsed: Int, done: Bool) {

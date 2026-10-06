@@ -38,10 +38,17 @@ enum StretchMode: String, CaseIterable, Identifiable {
 }
 
 enum StretchConfig {
-    static let videoTargetSec = 300
-    static let videoDurationBand: ClosedRange<Int> = 240...600
+    static let videoTargetMinutesOptions = [5, 10, 15, 20]
+    static let defaultVideoTargetMinutes = 5
     static let timerMinutesRange = 1...30
     static let defaultTimerMinutes = 5
+
+    static func videoDurationBand(forTargetMinutes minutes: Int) -> ClosedRange<Int> {
+        let targetSec = minutes * 60
+        let lower = max(60, targetSec - 120)
+        let upper = targetSec + 300
+        return lower...upper
+    }
 }
 
 enum Intensity: String, Codable, CaseIterable {
@@ -201,4 +208,23 @@ struct RoutineMove: Codable, Identifiable {
 
     var localizedName: String { name[AppLanguage.current.rawValue] ?? name["en"] ?? key }
     var localizedCue: String { cue[AppLanguage.current.rawValue] ?? cue["en"] ?? "" }
+
+    static func loadAll() -> [RoutineMove] {
+        guard let url = Bundle.main.url(forResource: "routine", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode([RoutineMove].self, from: data)
+        else { return [] }
+        return decoded
+    }
+
+    static func current(in moves: [RoutineMove], at elapsed: Int) -> RoutineMove? {
+        let total = moves.reduce(0) { $0 + $1.seconds }
+        guard total > 0, elapsed < total else { return nil }
+        var t = elapsed
+        for m in moves {
+            if t < m.seconds { return m }
+            t -= m.seconds
+        }
+        return nil
+    }
 }
