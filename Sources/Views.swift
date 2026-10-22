@@ -81,7 +81,7 @@ struct HomeView: View {
     @AppStorage("intervalMin") private var intervalMin = 60
     @AppStorage("stretchModeRaw") private var stretchModeRaw = StretchMode.video.rawValue
     @AppStorage("timerMinutes") private var timerMinutes = StretchConfig.defaultTimerMinutes
-    @AppStorage("videoTargetMinutes") private var videoTargetMinutes = StretchConfig.defaultVideoTargetMinutes
+    @AppStorage("videoBandRaw") private var videoBandRaw = StretchBand.migratedDefault.rawValue
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
@@ -135,13 +135,21 @@ struct HomeView: View {
                         .pickerStyle(.wheel)
                         .frame(height: 80)
                         .padding(.horizontal, 40)
+                    } else {
+                        Picker(t(.videoLengthLabel), selection: $videoBandRaw) {
+                            ForEach(StretchBand.allCases) { b in
+                                Text(t(.bandOption, b.label, b.rangeText)).tag(b.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 24)
                     }
 
                     Button {
                         model.pendingStart = true
                     } label: {
                         Label(stretchMode == .video
-                              ? t(.stretchNowButton, videoTargetMinutes)
+                              ? t(.stretchNowButton, StretchBand.from(videoBandRaw).rangeText)
                               : t(.stretchNowButtonTimer, timerMinutes),
                               systemImage: "play.fill")
                             .font(.headline)
@@ -155,8 +163,14 @@ struct HomeView: View {
                     Group {
                         if !notifAuthorized {
                             Button {
-                                if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    UIApplication.shared.open(url)
+                                Task {
+                                    if await NotificationScheduler.authStatus() == .notDetermined {
+                                        notifAuthorized = await NotificationScheduler.requestAuth()
+                                        NotificationScheduler.registerCategory()
+                                        await NotificationScheduler.reschedule()
+                                    } else if let url = URL(string: UIApplication.openSettingsURLString) {
+                                        await UIApplication.shared.open(url)
+                                    }
                                 }
                             } label: {
                                 Text(t(.notifOffWarning))
@@ -178,6 +192,9 @@ struct HomeView: View {
             .navigationTitle("StretchBreak")
             .task {
                 notifAuthorized = await NotificationScheduler.authStatus() == .authorized
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                Task { notifAuthorized = await NotificationScheduler.authStatus() == .authorized }
             }
         }
     }
@@ -205,14 +222,15 @@ struct ProgressRing: View {
     let value: Double
     let total: Double
     var tint: Color = AppTheme.morandi.color
+    var lineWidth: CGFloat = 22
     private var pct: Double { total <= 0 ? 0 : min(1, value / total) }
 
     var body: some View {
         ZStack {
-            Circle().stroke(tint.opacity(0.15), lineWidth: 22)
+            Circle().stroke(tint.opacity(0.15), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: pct)
-                .stroke(tint, style: StrokeStyle(lineWidth: 22, lineCap: .round))
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.spring(duration: 0.5), value: pct)
         }
@@ -235,11 +253,12 @@ struct SessionFlowView: View {
     @AppStorage("painAreaCursor") private var painAreaCursor = 0
     @AppStorage("stretchModeRaw") private var stretchModeRaw = StretchMode.video.rawValue
     @AppStorage("timerMinutes") private var timerMinutes = StretchConfig.defaultTimerMinutes
-    @AppStorage("videoTargetMinutes") private var videoTargetMinutes = StretchConfig.defaultVideoTargetMinutes
+    @AppStorage("videoBandRaw") private var videoBandRaw = StretchBand.migratedDefault.rawValue
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
     private var stretchMode: StretchMode { StretchMode(rawValue: stretchModeRaw) ?? .video }
+    private var band: StretchBand { .from(videoBandRaw) }
 
     @State private var step: Step = .loading
     @State private var pool: [StretchVideo] = []
@@ -252,13 +271,17 @@ struct SessionFlowView: View {
     @State private var feeling: Feeling?
     @State private var feedback: FeedbackTag?
     @State private var elapsed = 0
+    @State private var videoPaused = false
+    @State private var videoPlayedSec = 0
+    @State private var showTimeUp = false
+    @State private var overtime = false
     @State private var showConfetti = false
     @State private var rewardStreak = 0
     @State private var rewardToday = 0
     @State private var rewardMilestone = false
 
     private let maxFails = 4
-    private enum Step { case loading, repeatOffer, painBefore, playing, offline, selfGuided, rating, painAfter, reward }
+    private enum Step { case loading, repeatOffer, painBefore, playing, padding, offline, selfGuided, rating, painAfter, reward }
 
     struct RepeatInfo {
         let videoID: String; let title: String
@@ -286,9 +309,23 @@ struct SessionFlowView: View {
         }
         .onDisappear { rewarmNext() }
         .onChange(of: elapsed) { _, e in
-            if step == .playing, let v = video, e >= min(v.durationSec, videoTargetMinutes * 60 + 60) {
-                step = .rating
+            if [.playing, .padding, .offline].contains(step), !overtime, !showTimeUp, e >= band.targetSec {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                showTimeUp = true
+            } else if step == .playing, let v = video {
+                if !videoPaused { videoPlayedSec += 1 }
+                if videoPlayedSec >= v.durationSec { videoEnded() }
             }
+        }
+        .onChange(of: video?.id) {
+            videoPaused = false
+            videoPlayedSec = 0
+        }
+        .alert(t(.timeUpTitle), isPresented: $showTimeUp) {
+            Button(t(.keepGoingButton)) { overtime = true }
+            Button(t(.finishButton), role: .cancel) { endSession() }
+        } message: {
+            Text(t(.timeUpBody, band.targetSec / 60))
         }
         .task { await load() }
     }
@@ -315,12 +352,16 @@ struct SessionFlowView: View {
                 VStack(spacing: 12) {
                     YouTubePlayerView(
                         videoID: video.id,
-                        onEnded: { step = .rating },
-                        onError: { code in handlePlaybackError(code) })
+                        onEnded: { videoEnded() },
+                        onPausedChange: { videoPaused = $0 },
+                        onError: { code in handlePlaybackError(code) },
+                        holdPaused: showTimeUp)
                         .id(video.id)
                         .aspectRatio(16.0 / 9.0, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal)
+
+                    SessionCountdown(target: band.targetSec, elapsed: elapsed, videoPaused: videoPaused)
 
                     Text(video.title)
                         .font(.subheadline).multilineTextAlignment(.center)
@@ -344,7 +385,7 @@ struct SessionFlowView: View {
                         .accessibilityLabel(t(.dislikeVideoA11y))
                     }
 
-                    SilentTicker(elapsed: $elapsed)
+                    SilentTicker(elapsed: $elapsed, isRunning: !showTimeUp)
 
                     HStack(spacing: 10) {
                         Button {
@@ -373,8 +414,11 @@ struct SessionFlowView: View {
                 .padding(.top, 44)
             }
 
+        case .padding:
+            OfflineRoutineView(elapsed: $elapsed, target: band.targetSec, paused: showTimeUp) { step = .rating }
+
         case .offline:
-            OfflineRoutineView(elapsed: $elapsed) { step = .rating }
+            OfflineRoutineView(elapsed: $elapsed, target: band.targetSec, paused: showTimeUp) { step = .rating }
 
         case .selfGuided:
             TimerOnlyView(target: timerMinutes * 60, elapsed: $elapsed) { step = .rating }
@@ -396,6 +440,20 @@ struct SessionFlowView: View {
     }
 
     // MARK: flow helpers
+
+    private func videoEnded() {
+        guard step == .playing else { return }
+        if overtime || elapsed >= band.targetSec {
+            endSession()
+        } else {
+            step = .padding
+        }
+    }
+
+    private func endSession() {
+        showTimeUp = false
+        if askPain { step = .painAfter } else { finish() }
+    }
 
     private func advanceFromPainBefore() {
         step = stretchMode == .timer ? .selfGuided : (video == nil ? .offline : .playing)
@@ -429,7 +487,7 @@ struct SessionFlowView: View {
     }
 
     private func lengthFiltered(_ source: [StretchVideo]) -> [StretchVideo] {
-        SessionPlanner.lengthFiltered(source, band: StretchConfig.videoDurationBand(forTargetMinutes: videoTargetMinutes))
+        SessionPlanner.lengthFiltered(source, band: band)
     }
 
     /// If the most recent check-in scored ≥ 7 for an area (and the stretch wasn't disliked,
@@ -469,8 +527,9 @@ struct SessionFlowView: View {
         let statMap = Dictionary(stats.map { ($0.videoID, $0) }, uniquingKeysWith: { a, _ in a })
         var recentIDs = Array(logs.prefix(12).map(\.videoID))
         if let excludeID { recentIDs.insert(excludeID, at: 0) }
-        let targeted = SessionPlanner.targetedPool(source ?? pool, askPain: askPain, targeting: area.relatedBodyAreas)
-        return Recommender.next(from: lengthFiltered(targeted), stats: statMap,
+        let candidates = SessionPlanner.sessionPool(source ?? pool, band: band, askPain: askPain,
+                                                    targeting: area.relatedBodyAreas)
+        return Recommender.next(from: candidates, stats: statMap,
                                 recentIDs: recentIDs, recentAreas: [])
     }
 
@@ -478,7 +537,7 @@ struct SessionFlowView: View {
     /// so the session starts instantly.
     private func warmedPickIfUsable(from source: [StretchVideo]) -> StretchVideo? {
         guard let w = PlayerWarmer.shared.warmedVideo,
-              let match = source.first(where: { $0.id == w.id }),
+              let match = lengthFiltered(source).first(where: { $0.id == w.id }),
               !(stats.first(where: { $0.videoID == w.id })?.isBroken ?? false),
               !logs.prefix(10).contains(where: { $0.videoID == w.id }),
               !askPain || !Set(match.areas).isDisjoint(with: Set(area.relatedBodyAreas))
@@ -494,7 +553,6 @@ struct SessionFlowView: View {
     /// User asked for a different video.
     private func rerollVideo() {
         let previousID = video?.id
-        elapsed = 0
         video = pickNext(excluding: previousID)
         if video == nil { step = .offline }
     }
@@ -504,7 +562,6 @@ struct SessionFlowView: View {
         let previousID = video?.id
         if let id = previousID { statFor(id).isBroken = true; try? ctx.save() }
         failCount += 1
-        elapsed = 0
         if failCount >= maxFails {
             video = nil
             step = .offline               // always give the user a stretch
@@ -541,7 +598,7 @@ struct SessionFlowView: View {
 
         let log = SessionLog(
             videoID: id, videoTitle: title,
-            completedSec: max(elapsed, video?.durationSec ?? (stretchMode == .timer ? timerMinutes * 60 : videoTargetMinutes * 60)),
+            completedSec: max(elapsed, video?.durationSec ?? (stretchMode == .timer ? timerMinutes * 60 : band.targetSec)),
             painBefore: askPain ? painBefore : nil,
             painAfter: askPain ? painAfter : nil,
             feelingRaw: feeling?.rawValue,
@@ -562,12 +619,13 @@ struct SessionFlowView: View {
 
 struct SilentTicker: View {
     @Binding var elapsed: Int
+    var isRunning = true
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
-            .onReceive(tick) { _ in elapsed += 1 }
+            .onReceive(tick) { _ in if isRunning { elapsed += 1 } }
     }
 }
 
@@ -575,6 +633,8 @@ struct SilentTicker: View {
 
 struct OfflineRoutineView: View {
     @Binding var elapsed: Int
+    let target: Int
+    var paused = false
     let onDone: () -> Void
 
     @State private var moves: [RoutineMove] = []
@@ -590,6 +650,7 @@ struct OfflineRoutineView: View {
         VStack(spacing: 24) {
             if moves.indices.contains(index) {
                 let move = moves[index]
+                SessionCountdown(target: target, elapsed: elapsed)
                 Text(t(.moveCounter, index + 1, moves.count))
                     .font(.caption).foregroundStyle(.secondary)
                 Image(systemName: move.symbol)
@@ -601,8 +662,8 @@ struct OfflineRoutineView: View {
                     .font(.body).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                Text("\(remaining)s")
-                    .font(.system(size: 40, weight: .bold, design: .rounded).monospacedDigit())
+                Text(t(.thisMoveSec, remaining))
+                    .font(.title3.monospacedDigit()).foregroundStyle(.secondary)
                 HStack {
                     Button(t(.skipThisOneButton)) { nextMove() }
                         .buttonStyle(.bordered)
@@ -617,7 +678,7 @@ struct OfflineRoutineView: View {
         .padding(.top, 44)
         .onAppear(perform: loadRoutine)
         .onReceive(tick) { _ in
-            guard !moves.isEmpty else { return }
+            guard !moves.isEmpty, !paused else { return }
             elapsed += 1
             remaining -= 1
             if remaining <= 0 { nextMove() }
@@ -637,12 +698,41 @@ struct OfflineRoutineView: View {
     }
 
     private func nextMove() {
-        if index + 1 < moves.count {
-            index += 1
-            remaining = moves[index].seconds
-        } else {
-            onDone()
+        index = (index + 1) % moves.count
+        remaining = moves[index].seconds
+    }
+}
+
+struct SessionCountdown: View {
+    let target: Int
+    let elapsed: Int
+    var videoPaused = false
+
+    @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
+    private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
+
+    private var left: Int { target - elapsed }
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(videoPaused ? t(.sessionPaused) : t(left >= 0 ? .sessionLeft : .sessionExtra))
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.secondary)
+            Text(left >= 0 ? mmss(left) : "+" + mmss(-left))
+                .font(.system(.title2, design: .rounded).weight(.medium).monospacedDigit())
+                .foregroundStyle(theme)
+                .contentTransition(.numericText(countsDown: left >= 0))
         }
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(t(.sessionLeftA11y, max(left, 0) / 60, max(left, 0) % 60))
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+
+    private func mmss(_ s: Int) -> String {
+        String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 
@@ -1050,7 +1140,6 @@ struct SettingsView: View {
     @AppStorage("intervalMin") private var intervalMin = 60
     @AppStorage("activeDaysMask") private var activeDaysMask = 62
     @AppStorage("askPain") private var askPain = true
-    @AppStorage("videoTargetMinutes") private var videoTargetMinutes = StretchConfig.defaultVideoTargetMinutes
     @AppStorage("themeColorRaw") private var themeColorRaw = AppTheme.morandi.rawValue
     @AppStorage("appLanguage") private var appLanguageRaw = AppLanguage.current.rawValue
     private var theme: Color { AppTheme(rawValue: themeColorRaw)?.color ?? AppTheme.morandi.color }
@@ -1091,17 +1180,6 @@ struct SettingsView: View {
 
                 Section(t(.sectionGoalPrompts)) {
                     Toggle(t(.askDiscomfortToggle), isOn: $askPain)
-                }
-
-                Section {
-                    Picker(t(.videoLengthLabel), selection: $videoTargetMinutes) {
-                        ForEach(StretchConfig.videoTargetMinutesOptions, id: \.self) { m in
-                            Text(t(.minUnit, m)).tag(m)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text(t(.sectionVideoLength))
                 }
 
                 Section {

@@ -10,33 +10,71 @@ final class SessionPlannerTests: XCTestCase {
 
     func testFiltersToVideoBand() {
         let pool = [vid("a", durationSec: 120), vid("b", durationSec: 300),
-                    vid("c", durationSec: 450), vid("d", durationSec: 900)]
-        let filtered = SessionPlanner.lengthFiltered(pool, band: StretchConfig.videoDurationBand(forTargetMinutes: 5))
+                    vid("c", durationSec: 350), vid("d", durationSec: 900)]
+        let filtered = SessionPlanner.lengthFiltered(pool, band: .standard)
         XCTAssertEqual(Set(filtered.map(\.id)), ["b", "c"])
     }
 
-    func testFallsBackToFullPoolWhenBandTooThin() {
-        let pool = [vid("a", durationSec: 120), vid("b", durationSec: 300), vid("c", durationSec: 90)]
-        let filtered = SessionPlanner.lengthFiltered(pool, band: StretchConfig.videoDurationBand(forTargetMinutes: 5))
-        XCTAssertEqual(filtered.count, pool.count)
+    func testThinBandAddsShorterPaddableVideosButNeverLongerOnes() {
+        let pool = [vid("short", durationSec: 200), vid("deep", durationSec: 400), vid("long", durationSec: 470)]
+        let filtered = SessionPlanner.lengthFiltered(pool, band: .standard)
+        XCTAssertEqual(filtered.map(\.id), ["short"], "standard band must not fall back to longer videos")
+
+        let standard = SessionPlanner.lengthFiltered([vid("a", durationSec: 120), vid("b", durationSec: 300), vid("x", durationSec: 470)],
+                                                     band: .standard)
+        XCTAssertEqual(Set(standard.map(\.id)), ["a", "b"])
     }
 
-    func testVideoDurationBandScalesWithTarget() {
-        let band5 = StretchConfig.videoDurationBand(forTargetMinutes: 5)
-        let band10 = StretchConfig.videoDurationBand(forTargetMinutes: 10)
-        XCTAssertLessThan(band5.upperBound, band10.upperBound)
-        XCTAssertLessThan(band5.lowerBound, band10.lowerBound)
-        XCTAssertTrue(band5.contains(300))
-        XCTAssertTrue(band10.contains(600))
-        XCTAssertFalse(band5.contains(900), "a 15 min video shouldn't satisfy a 5 min target's band")
+    func testShorterVideoIsSkippedWhenRoutineCannotFillTheGap() {
+        let filtered = SessionPlanner.lengthFiltered([vid("a", durationSec: 90)], band: .deep, maxPadSec: 100)
+        XCTAssertTrue(filtered.isEmpty)
+    }
+
+    func testPadSecondsBringsShortVideoIntoBand() {
+        for band in StretchBand.allCases {
+            let short = vid("s", durationSec: 90)
+            let pad = SessionPlanner.padSeconds(for: short, band: band)
+            if band.range.contains(90) {
+                XCTAssertEqual(pad, 0)
+            } else {
+                XCTAssertTrue(band.range.contains(90 + pad), "\(band) padded total \(90 + pad) is outside \(band.range)")
+            }
+            let fitting = vid("f", durationSec: band.range.upperBound)
+            XCTAssertEqual(SessionPlanner.padSeconds(for: fitting, band: band), 0)
+        }
+    }
+
+    func testBandsAreContiguousAndInsidePoolRange() {
+        let bands = StretchBand.allCases
+        XCTAssertGreaterThanOrEqual(bands.first!.range.lowerBound, StretchConfig.poolDurationRange.lowerBound)
+        XCTAssertEqual(bands.last?.range.upperBound, StretchConfig.poolDurationRange.upperBound)
+        for (a, b) in zip(bands, bands.dropFirst()) {
+            XCTAssertEqual(a.range.upperBound + 1, b.range.lowerBound)
+        }
+        for band in bands { XCTAssertTrue(band.range.contains(band.targetSec)) }
+    }
+
+    func testBandTargetsAreFixedMinutes() {
+        XCTAssertEqual(StretchBand.standard.targetSec, 5 * 60)
+        XCTAssertEqual(StretchBand.deep.targetSec, 8 * 60)
+        XCTAssertGreaterThan(RoutineMove.totalSeconds, 0, "the routine loops to fill any gap, so it only needs moves")
     }
 
     func testStretchConfigDefaults() {
-        XCTAssertEqual(StretchConfig.defaultVideoTargetMinutes, 5)
         XCTAssertEqual(StretchConfig.defaultTimerMinutes, 5)
         XCTAssertTrue(StretchConfig.timerMinutesRange.contains(3))
         XCTAssertTrue(StretchConfig.timerMinutesRange.contains(5))
-        XCTAssertEqual(StretchConfig.videoTargetMinutesOptions, [5, 10, 15, 20])
+        XCTAssertEqual(StretchBand.allCases, [.standard, .deep])
+    }
+
+    func testOldMinuteSettingMigratesToBand() {
+        let d = UserDefaults.standard
+        let saved = d.object(forKey: "videoTargetMinutes")
+        defer { d.set(saved, forKey: "videoTargetMinutes") }
+        d.removeObject(forKey: "videoTargetMinutes"); XCTAssertEqual(StretchBand.migratedDefault, .standard)
+        d.set(5, forKey: "videoTargetMinutes");  XCTAssertEqual(StretchBand.migratedDefault, .standard)
+        d.set(10, forKey: "videoTargetMinutes"); XCTAssertEqual(StretchBand.migratedDefault, .deep)
+        d.set(20, forKey: "videoTargetMinutes"); XCTAssertEqual(StretchBand.migratedDefault, .deep)
     }
 
     func testExactlyTwoStretchModes() {
@@ -140,5 +178,22 @@ final class SessionPlannerTests: XCTestCase {
         let lang = URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?.first { $0.name == "relevanceLanguage" }?.value
         XCTAssertEqual(lang, "en")
+    }
+
+    func testSessionPoolKeepsRotationWhenAreaMatchesAreFew() {
+        let pool = [vid("hip1", durationSec: 250, areas: [.piriformis]), vid("hip2", durationSec: 300, areas: [.piriformis]),
+                    vid("neck1", durationSec: 200, areas: [.neck]), vid("neck2", durationSec: 320, areas: [.neck]),
+                    vid("wrist", durationSec: 340, areas: [.wristsForearms]), vid("long", durationSec: 470, areas: [.piriformis])]
+        let result = SessionPlanner.sessionPool(pool, band: .standard, askPain: true, targeting: [.piriformis])
+        XCTAssertEqual(Set(result.map(\.id)), ["hip1", "hip2", "neck1", "neck2", "wrist"],
+                       "two area matches is too few to rotate; fall back to every in-band video")
+    }
+
+    func testSessionPoolPrefersAreaWhenEnoughMatch() {
+        let pool = (1...4).map { vid("hip\($0)", durationSec: 200 + $0 * 10, areas: [.piriformis]) }
+            + [vid("neck", durationSec: 250, areas: [.neck])]
+        let result = SessionPlanner.sessionPool(pool, band: .standard, askPain: true, targeting: [.piriformis])
+        XCTAssertEqual(result.count, 4)
+        XCTAssertFalse(result.contains { $0.id == "neck" })
     }
 }

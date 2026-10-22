@@ -14,6 +14,7 @@ final class VideoStore: ObservableObject {
     private var fetchedAt: Date?
     private var cachedLanguage: AppLanguage?
     private var userVideos: [StretchVideo] = []
+    private var userDurations: [String: Int] = [:]
     private var task: Task<Void, Never>?
     private let ttl: TimeInterval = 6 * 3600
 
@@ -29,6 +30,14 @@ final class VideoStore: ObservableObject {
     func setUserVideos(_ list: [StretchVideo]) {
         userVideos = list
         rebuild(remote: remoteOnly)
+        let unknown = list.map(\.id).filter { userDurations[$0] == nil }
+        guard !apiKey.isEmpty, !unknown.isEmpty else { return }
+        Task {
+            let found = await YouTubeProvider(apiKey: apiKey).durations(for: unknown)
+            guard !found.isEmpty else { return }
+            userDurations.merge(found) { _, new in new }
+            rebuild(remote: remoteOnly)
+        }
     }
 
     /// Kick a background refresh. Cheap no-op when the cache is still fresh.
@@ -70,12 +79,20 @@ final class VideoStore: ObservableObject {
 
     private func rebuild(remote: [StretchVideo]) {
         var seen = Set<String>()
-        videos = (userVideos + remote).filter { seen.insert($0.id).inserted }
+        let timedUserVideos = userVideos.map { v in
+            userDurations[v.id].map {
+                StretchVideo(id: v.id, title: v.title, channel: v.channel, durationSec: $0,
+                             areas: v.areas, intensity: v.intensity, source: v.source)
+            } ?? v
+        }
+        videos = (timedUserVideos + remote).filter { seen.insert($0.id).inserted }
     }
 
     // MARK: - Disk cache
 
-    private struct Cache: Codable { let fetchedAt: Date; let videos: [StretchVideo]; let language: String? }
+    /// Bump when the fetch changes shape so older caches refresh on next launch.
+    private static let cacheVersion = 3
+    private struct Cache: Codable { let fetchedAt: Date; let videos: [StretchVideo]; let language: String?; var version: Int? }
 
     private var cacheURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -86,14 +103,14 @@ final class VideoStore: ObservableObject {
     private func loadCache() {
         guard let data = try? Data(contentsOf: cacheURL),
               let cache = try? JSONDecoder().decode(Cache.self, from: data) else { return }
-        fetchedAt = cache.fetchedAt
+        fetchedAt = cache.version == Self.cacheVersion ? cache.fetchedAt : nil
         cachedLanguage = cache.language.flatMap(AppLanguage.init(rawValue:)) ?? .en
         videos = cache.videos
         if !videos.isEmpty { PlayerWarmer.shared.warm(from: videos, avoiding: []) }
     }
 
     private func saveCache(_ remote: [StretchVideo], language: AppLanguage) {
-        guard let data = try? JSONEncoder().encode(Cache(fetchedAt: Date(), videos: remote, language: language.rawValue)) else { return }
+        guard let data = try? JSONEncoder().encode(Cache(fetchedAt: Date(), videos: remote, language: language.rawValue, version: Self.cacheVersion)) else { return }
         try? data.write(to: cacheURL, options: .atomic)
     }
 }

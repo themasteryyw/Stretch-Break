@@ -18,7 +18,9 @@ let kYouTubePlayerHost = "https://www.youtube-nocookie.com"
 struct YouTubePlayerView: UIViewRepresentable {
     let videoID: String
     var onEnded: () -> Void = {}
+    var onPausedChange: (Bool) -> Void = { _ in }
     var onError: (Int) -> Void = { _ in }
+    var holdPaused = false
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -29,6 +31,7 @@ struct YouTubePlayerView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.preferences.isElementFullscreenEnabled = true
         config.userContentController.add(context.coordinator, name: "yt")
 
         let web = WKWebView(frame: .zero, configuration: config)
@@ -39,10 +42,20 @@ struct YouTubePlayerView: UIViewRepresentable {
         return web
     }
 
-    func updateUIView(_ web: WKWebView, context: Context) {}
+    func updateUIView(_ web: WKWebView, context: Context) {
+        guard holdPaused != context.coordinator.holding else { return }
+        context.coordinator.holding = holdPaused
+        if holdPaused {
+            web.closeAllMediaPresentations {}
+            web.evaluateJavaScript("try { player.pauseVideo(); } catch (e) {}")
+        } else {
+            web.evaluateJavaScript("try { player.playVideo(); } catch (e) {}")
+        }
+    }
 
     final class Coordinator: NSObject, WKScriptMessageHandler {
         private let parent: YouTubePlayerView
+        var holding = false
         init(_ parent: YouTubePlayerView) { self.parent = parent }
 
         func userContentController(_ controller: WKUserContentController,
@@ -50,6 +63,8 @@ struct YouTubePlayerView: UIViewRepresentable {
             guard let text = message.body as? String else { return }
             if text == "ended" {
                 parent.onEnded()
+            } else if text == "paused" || text == "resumed" {
+                parent.onPausedChange(text == "paused")
             } else if text.hasPrefix("error:") {
                 parent.onError(Int(text.dropFirst(6)) ?? -1)
             }
@@ -93,12 +108,16 @@ struct YouTubePlayerView: UIViewRepresentable {
                 videoId: '\(id)',
                 host: '\(kYouTubePlayerHost)',
                 playerVars: {
-                  playsinline: 1, rel: 0, autoplay: \(warm ? 0 : 1), fs: 0,
+                  playsinline: 1, rel: 0, autoplay: \(warm ? 0 : 1), fs: 1,
                   enablejsapi: 1, origin: '\(kYouTubePlayerHost)'
                 },
                 events: {
                   onReady: function () { post('ready'); \(warm ? "" : "startPlayback();") },
-                  onStateChange: function (e) { if (e.data === YT.PlayerState.ENDED) post('ended'); },
+                  onStateChange: function (e) {
+                    if (e.data === YT.PlayerState.ENDED) post('ended');
+                    else if (e.data === YT.PlayerState.PAUSED) post('paused');
+                    else if (e.data === YT.PlayerState.PLAYING) post('resumed');
+                  },
                   onError: function (e) { fail(e.data); }
                 }
               });

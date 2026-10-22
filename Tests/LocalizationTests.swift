@@ -41,6 +41,20 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(t(.moveCounter, 2, 11), "第 2／11 組")
     }
 
+    func testTimeUpBodyFormattingWorksInBothLanguages() {
+        setLanguage(.en)
+        XCTAssertEqual(t(.timeUpBody, 5), "You've stretched for 5 minutes. Keep going or wrap up here?")
+        setLanguage(.zh)
+        XCTAssertEqual(t(.timeUpBody, 8), "你已經伸展 8 分鐘了，要繼續還是先到這裡？")
+    }
+
+    func testStretchNowButtonShowsTimeOnly() {
+        setLanguage(.en)
+        XCTAssertEqual(t(.stretchNowButton, StretchBand.standard.rangeText), "Stretch now · 5 min")
+        setLanguage(.zh)
+        XCTAssertEqual(t(.stretchNowButton, StretchBand.deep.rangeText), "現在伸展 · 8 分鐘")
+    }
+
     func testBodyAreaCoversWholeBodyNotJustLowerBack() {
         XCTAssertTrue(BodyArea.allCases.contains(.lowerBack))
         XCTAssertTrue(BodyArea.allCases.contains(.neck))

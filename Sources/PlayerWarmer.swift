@@ -16,8 +16,9 @@ final class PlayerWarmer {
     func warm(from pool: [StretchVideo], avoiding recent: [String]) {
         guard !pool.isEmpty else { return }
         let recentSet = Set(recent.prefix(10))
-        let candidates = pool.filter { !recentSet.contains($0.id) }
-        guard let pick = candidates.randomElement() ?? pool.first,
+        let fitting = SessionPlanner.lengthFiltered(pool, band: .current)
+        let candidates = fitting.filter { !recentSet.contains($0.id) }
+        guard let pick = candidates.randomElement() ?? fitting.first,
               pick.id != warmedVideo?.id else { return }
 
         warmedVideo = pick
@@ -46,6 +47,7 @@ final class PlayerWarmer {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.preferences.isElementFullscreenEnabled = true
         config.userContentController.add(Sink.shared, name: "yt")   // swallow 'ready' while warming
 
         let web = WKWebView(frame: .zero, configuration: config)

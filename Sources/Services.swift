@@ -43,59 +43,105 @@ enum NotificationScheduler {
     private static let maxPending = 60
 
     static let promptsEN = [
-        "Your body's been asking for a break — got a minute? 👀",
-        "Psst — still sitting? Let's fix that 🧘",
-        "Sitting break — your hips will thank you",
-        "Your sciatic nerve says thanks. Quick stretch?",
-        "Stand up! Roll those shoulders 🌀",
-        "Quick reset, then back to focus",
-        "Shift position, get the blood moving 🩵",
-        "Your neck's been in one spot too long — reset it",
-        "Unlock those hips — quick stretch break",
-        "Give your lower back a breather",
-        "Stand tall, open up that chest 🌿",
-        "Wrists tired from typing? Give them a stretch",
-        "Legs feel stiff? Time for a quick stretch",
-        "A short break now beats a sore back later",
-        "Quads feeling tight? Stretch the front of your thighs",
-        "Get up, shake it out, come back sharper",
-        "Time to move — your future self will thank you",
-        "Tight shoulders? Let's fix that",
-        "Desk posture check — how are you sitting right now?",
-        "Stretch break: hamstrings and hips need love",
-        "Reset your spine with a quick stretch",
-        "Ankles and calves have been idle — wake them up",
-        "Ready to move? Tap in and let's go 💪",
-        "How's your body feeling right now? Let's find out"
+        "Your chair called. It needs some alone time 🪑",
+        "Breaking news: your neck has filed a complaint 📰",
+        "Your shoulders are up by your ears again. We can see them 👀",
+        "Hips don't lie, and right now they're saying \"help\" 💃",
+        "Plot twist: you stand up and stretch 🎬",
+        "Your spine would like to speak to the manager",
+        "Wrists: typed a lot. Thanks: none. Fix that ✋",
+        "Achievement unlocked: Professional Sitter. Time to level up 🏆",
+        "Your hamstrings sent a strongly worded email 📧",
+        "Quads on strike. Demand: one good stretch 🪧",
+        "Calves asleep? Wake them before they start snoring 😴",
+        "Ankles, assemble! Roll them out 🦸",
+        "Your lower back called a team meeting. You're invited",
+        "Chest out, superhero pose. Nobody's watching (probably) 🦸‍♀️",
+        "Loading energy... 12%. Stretch to recharge 🔋",
+        "Your body called. It wants a reboot, not a coffee ☕",
+        "Gravity has been winning all day. Fight back 🌍",
+        "Shrimp posture detected 🦐 Straighten up!",
+        "Your cat stretches 40 times a day. Just saying 🐈",
+        "Pause the scroll, start the roll (shoulders, that is) 🌀",
+        "Today's dare: stand up before this banner disappears ⏱️",
+        "Your future self is waving from the couch. Wave back 👋",
+        "Blood flow update: stuck in traffic. Clear the road 🚗",
+        "Stretch now, thank yourself later. Small price, big payoff 💸",
+        "Your desk isn't going anywhere. Promise 🤝",
+        "Fun fact: you're about 1 cm taller in the morning. Stretch to win some back 📏",
+        "Your toes forgot what the floor feels like. Remind them 🦶",
+        "Hourly reminder: you have legs. Use them 🦵",
+        "Reach for the ceiling like it owes you money 💰",
+        "Your glutes switched to airplane mode ✈️",
+        "Body fact: muscles love blood flow. Moving is free delivery 🚚",
+        "Stand up. Sit down. Okay, just do the first part 🙃",
+        "Side bend time. Be a banana for 10 seconds 🍌",
+        "Neck rolls, nice and slow, like a sleepy owl 🦉",
+        "Keep the music on. Just listen standing up 🎧",
+        "Spine update available. Install now? 🔄",
+        "Refill your water and stretch on the way. Two wins, one trip 💧",
+        "Your inbox can wait. Your hip flexors can't 📥",
+        "Fun fact: you have 600+ muscles. Pick a few and say hi 💪",
+        "Roll your shoulders back. Instantly look like you have a plan 😎",
+        "Stretch like you just woke up from a 10-hour nap 🥱",
+        "Dinosaurs stopped moving. You know how that went 🦕",
+        "Your knees asked for one squat. Just one. Very reasonable 🙏",
+        "Mini mission: touch your toes, or at least wave at them 🎯"
     ]
     static let promptsZH = [
-        "你的身體在跟你抗議了 — 有空嗎？👀",
-        "還坐著呀？來動一動吧 🧘",
-        "坐太久了 — 你的髖部會謝謝你",
-        "你的坐骨神經說聲謝謝，來個伸展？",
-        "起來動一動！轉轉肩膀 🌀",
-        "快速重整一下，再回去專心",
-        "換個姿勢，讓血液循環一下 🩵",
-        "脖子固定太久了，放鬆一下吧",
-        "解放一下髖部 — 伸展小休息",
-        "讓下背喘口氣",
-        "站起來，展開胸口 🌿",
-        "手腕打字打累了嗎？伸展一下",
-        "腿覺得僵硬嗎？該伸展了",
-        "現在稍微休息一下，勝過之後腰痠背痛",
-        "大腿前側緊繃嗎？伸展一下",
-        "起來甩一甩，回來更有精神",
-        "動一動吧 — 未來的你會感謝現在的你",
-        "肩膀緊繃嗎？來放鬆一下",
-        "檢查一下坐姿 — 你現在怎麼坐的？",
-        "伸展時間：大腿後側和髖部需要照顧",
-        "來個伸展，讓脊椎重新歸位",
-        "腳踝和小腿太久沒動了，喚醒它們",
-        "準備好動一動了嗎？點進來一起做 💪",
-        "現在身體感覺如何？來看看吧"
+        "椅子說它需要一點私人空間 🪑",
+        "插播快訊：你的脖子正式提出抗議 📰",
+        "肩膀又跑到耳朵旁邊了，我們都看到了 👀",
+        "髖部不會說謊，它現在在喊救命 💃",
+        "劇情急轉彎：你站起來伸展了 🎬",
+        "你的脊椎要求見主管",
+        "手腕打了一整天字，連聲謝謝都沒有 ✋",
+        "成就解鎖：職業坐坐專家 🏆 該升級了",
+        "大腿後側寄了一封措辭強烈的信給你 📧",
+        "大腿前側罷工中，訴求：一次好好的伸展 🪧",
+        "小腿睡著了？趁它還沒打呼前叫醒它 😴",
+        "腳踝們，集合！轉一轉 🦸",
+        "下背召開緊急會議，你是必須出席的那位",
+        "挺起胸口，擺個超人姿勢，沒人在看啦（大概）🦸‍♀️",
+        "電量剩下 12%… 伸展一下來充電 🔋",
+        "身體說它想重開機，不是再來一杯咖啡 ☕",
+        "地心引力今天贏太多場了，反擊吧 🌍",
+        "偵測到蝦子坐姿 🦐 請立刻挺直",
+        "貓咪一天伸懶腰四十次，只是說說而已 🐈",
+        "停止滑手機，開始轉肩膀 🌀",
+        "今日挑戰：在這則通知消失前站起來 ⏱️",
+        "未來的你正在沙發上跟你揮手，揮回去吧 👋",
+        "血液循環快報：嚴重塞車中，快來疏通 🚗",
+        "現在動一動，之後少痠痛，超划算 💸",
+        "桌子不會跑掉，等你回來它還在，保證 🤝",
+        "冷知識：早上的你比晚上高約 1 公分，伸展一下拿回來 📏",
+        "腳趾快忘記踩地板是什麼感覺了，提醒它們一下 🦶",
+        "整點提醒：你是有腿的，用一下吧 🦵",
+        "雙手往天花板伸，像它欠你錢一樣 💰",
+        "你的屁股已經切換成飛航模式了 ✈️",
+        "身體小知識：肌肉最愛血液，動起來就是外送到府 🚚",
+        "站起來，坐下。好啦，先做前半段就好 🙃",
+        "側彎時間到，當 10 秒的香蕉 🍌",
+        "慢慢轉脖子，像一隻想睡覺的貓頭鷹 🦉",
+        "音樂繼續放，只是換你站著聽 🎧",
+        "脊椎有新版本，要立即更新嗎？🔄",
+        "去裝個水，順路伸展，一趟賺兩個 💧",
+        "信箱可以等，你的髖屈肌等不了 📥",
+        "冷知識：你全身有六百多條肌肉，挑幾條打個招呼 💪",
+        "肩膀往後轉一轉，瞬間看起來很有計畫 😎",
+        "像剛睡飽十小時那樣，大大伸個懶腰 🥱",
+        "恐龍後來不動了，結局你也知道 🦕",
+        "膝蓋只要求一個深蹲，就一個，很講理吧 🙏",
+        "小任務：摸到腳趾，摸不到就跟它們揮揮手 🎯"
     ]
     private static var prompts: [String] {
         AppLanguage.current == .zh ? promptsZH : promptsEN
+    }
+
+    /// Stable per-day shuffle: no prompt repeats within a day, and rescheduling keeps the same order.
+    static func promptOrder(forDay day: Int, count: Int) -> [Int] {
+        var rng = SeededGenerator(seed: UInt64(bitPattern: Int64(day)))
+        return Array(0..<count).shuffled(using: &rng)
     }
 
     static func requestAuth() async -> Bool {
@@ -130,9 +176,13 @@ enum NotificationScheduler {
             let weekday = cal.component(.weekday, from: day)
             guard Cfg.weekdayEnabled(weekday) else { continue }
 
+            let dayNumber = Int(cal.startOfDay(for: day).timeIntervalSince1970 / 86_400)
+            let order = promptOrder(forDay: dayNumber, count: prompts.count)
+            var slot = 0
             var minute = Cfg.startHour * 60
             let endMinute = Cfg.endHour * 60
             while minute <= endMinute {
+                defer { slot += 1 }
                 var comps = cal.dateComponents([.year, .month, .day], from: day)
                 comps.hour = minute / 60
                 comps.minute = minute % 60
@@ -140,7 +190,7 @@ enum NotificationScheduler {
                 if let fire = cal.date(from: comps), fire > now, scheduled < maxPending {
                     let content = UNMutableNotificationContent()
                     content.title = "StretchBreak"
-                    content.body = prompts.randomElement()!
+                    content.body = prompts[order[slot % order.count]]
                     content.sound = .default
                     content.categoryIdentifier = categoryID
 
@@ -258,8 +308,9 @@ struct YouTubeProvider: VideoProvider {
             .init(name: "q", value: query),
             .init(name: "type", value: "video"),
             .init(name: "videoEmbeddable", value: "true"),
-            .init(name: "videoDuration", value: "any"),
-            .init(name: "maxResults", value: "8"),
+            // "any" returns mostly sub-minute Shorts; "medium" is 4–20 min.
+            .init(name: "videoDuration", value: "medium"),
+            .init(name: "maxResults", value: "20"),
             .init(name: "relevanceLanguage", value: relevanceLanguage),
             .init(name: "safeSearch", value: "strict"),
             .init(name: "key", value: apiKey)
@@ -303,9 +354,12 @@ struct YouTubeProvider: VideoProvider {
                                                        intensity: v.intensity, source: v.source) }
             return v
         }
-        // Prefer genuine micro-breaks (~2–8 min); fall back to the full set if that's too thin.
-        let preferred = all.filter { (90...480).contains($0.durationSec) }
-        return preferred.count >= 3 ? preferred : all
+        return all.filter { StretchConfig.poolDurationRange.contains($0.durationSec) }
+    }
+
+    /// Real durations for the user's pasted links (they arrive without one).
+    func durations(for ids: [String]) async -> [String: Int] {
+        await verify(ids).compactMapValues { $0.durationSec > 0 ? $0.durationSec : nil }
     }
 
     private struct Meta { let embeddable: Bool; let isPublic: Bool; let durationSec: Int }
@@ -395,20 +449,41 @@ private extension String {
 // MARK: - Recommender
 
 enum SessionPlanner {
-    static func lengthFiltered(_ source: [StretchVideo], band: ClosedRange<Int>) -> [StretchVideo] {
-        let filtered = source.filter { band.contains($0.durationSec) }
-        return filtered.count >= 2 ? filtered : source
+    /// Videos that can deliver `band`: ones inside it, plus (when fewer than two fit)
+    /// shorter ones the offline routine can top up. Never returns longer videos.
+    static func lengthFiltered(_ source: [StretchVideo], band: StretchBand,
+                               maxPadSec: Int = RoutineMove.totalSeconds) -> [StretchVideo] {
+        let inBand = source.filter { band.range.contains($0.durationSec) }
+        if inBand.count >= 2 { return inBand }
+        let paddable = source.filter {
+            $0.durationSec < band.range.lowerBound && band.targetSec - $0.durationSec <= maxPadSec
+        }
+        return inBand + paddable
     }
 
-    static func areaFiltered(_ source: [StretchVideo], targeting areas: [BodyArea]) -> [StretchVideo] {
+    /// Seconds of offline routine to append after `video` so the session reaches `band`.
+    static func padSeconds(for video: StretchVideo, band: StretchBand) -> Int {
+        video.durationSec < band.range.lowerBound ? band.targetSec - video.durationSec : 0
+    }
+
+    static func areaFiltered(_ source: [StretchVideo], targeting areas: [BodyArea], minCount: Int = 2) -> [StretchVideo] {
         let wanted = Set(areas)
         let filtered = source.filter { !Set($0.areas).isDisjoint(with: wanted) }
-        return filtered.count >= 2 ? filtered : source
+        return filtered.count >= minCount ? filtered : source
     }
 
     static func targetedPool(_ source: [StretchVideo], askPain: Bool, targeting areas: [BodyArea]) -> [StretchVideo] {
         guard askPain else { return source }
         return areaFiltered(source, targeting: areas)
+    }
+
+    /// Length is a hard rule, body area a preference: narrow to the area only when that
+    /// still leaves enough videos to rotate through.
+    static func sessionPool(_ source: [StretchVideo], band: StretchBand, askPain: Bool,
+                            targeting areas: [BodyArea], minRotation: Int = 4) -> [StretchVideo] {
+        let fitting = lengthFiltered(source, band: band)
+        guard askPain else { return fitting }
+        return areaFiltered(fitting, targeting: areas, minCount: minRotation)
     }
 
     static func logsIncludingSession(_ logs: [SessionLog], newLog: SessionLog) -> [SessionLog] {
@@ -521,5 +596,17 @@ enum YouTubeURL {
             return comps.path.split(separator: "/").last.map(String.init)
         }
         return nil
+    }
+}
+
+struct SeededGenerator: RandomNumberGenerator {
+    private var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E3779B97F4A7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+        return z ^ (z >> 31)
     }
 }

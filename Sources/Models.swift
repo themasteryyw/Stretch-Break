@@ -38,16 +38,58 @@ enum StretchMode: String, CaseIterable, Identifiable {
 }
 
 enum StretchConfig {
-    static let videoTargetMinutesOptions = [5, 10, 15, 20]
-    static let defaultVideoTargetMinutes = 5
     static let timerMinutesRange = 1...30
     static let defaultTimerMinutes = 5
+    /// Shortest / longest video kept in the pool; every band sits inside this.
+    static let poolDurationRange = 90...480
+}
 
-    static func videoDurationBand(forTargetMinutes minutes: Int) -> ClosedRange<Int> {
-        let targetSec = minutes * 60
-        let lower = max(60, targetSec - 120)
-        let upper = targetSec + 300
-        return lower...upper
+/// Video-mode session length. Only videos inside `range` are played; a short video
+/// is topped up with the offline routine so the session still lands in the band.
+enum StretchBand: String, CaseIterable, Identifiable {
+    case standard, deep
+    var id: String { rawValue }
+
+    var range: ClosedRange<Int> {
+        switch self {
+        case .standard: 181...360
+        case .deep:     361...480
+        }
+    }
+
+    /// Fixed session length the countdown runs from.
+    var targetSec: Int {
+        switch self {
+        case .standard: 300
+        case .deep:     480
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .standard: t(.bandStandard)
+        case .deep:     t(.bandDeep)
+        }
+    }
+
+    var rangeText: String {
+        switch self {
+        case .standard: t(.bandStandardRange)
+        case .deep:     t(.bandDeepRange)
+        }
+    }
+
+    /// First-run value: carries over the old 5/10/15/20-minute setting.
+    static var migratedDefault: StretchBand {
+        let old = UserDefaults.standard.integer(forKey: "videoTargetMinutes")
+        return old >= 10 ? .deep : .standard
+    }
+
+    static func from(_ raw: String) -> StretchBand { StretchBand(rawValue: raw) ?? .standard }
+
+    /// The saved choice, for code outside SwiftUI views.
+    static var current: StretchBand {
+        UserDefaults.standard.string(forKey: "videoBandRaw").map(from) ?? migratedDefault
     }
 }
 
@@ -216,6 +258,8 @@ struct RoutineMove: Codable, Identifiable {
         else { return [] }
         return decoded
     }
+
+    static let totalSeconds = loadAll().reduce(0) { $0 + $1.seconds }
 
     static func current(in moves: [RoutineMove], at elapsed: Int) -> RoutineMove? {
         let total = moves.reduce(0) { $0 + $1.seconds }

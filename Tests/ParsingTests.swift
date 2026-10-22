@@ -36,13 +36,11 @@ final class ParsingTests: XCTestCase {
         XCTAssertEqual(r.items[0].snippet.channelTitle, "PT Chan")
     }
 
-    func testSearchURLDoesNotRestrictToMediumDuration() throws {
+    func testSearchURLRestrictsToMediumDurationToSkipShorts() throws {
         let url = try XCTUnwrap(YouTubeProvider.searchURL(query: "test", apiKey: "key"))
         let comps = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
         let duration = comps.queryItems?.first { $0.name == "videoDuration" }?.value
-        XCTAssertNotEqual(duration, "medium")
-        XCTAssertNotEqual(duration, "long")
-        XCTAssertEqual(duration, "any")
+        XCTAssertEqual(duration, "medium")
     }
 
     func testVideosResponseDecoding() throws {

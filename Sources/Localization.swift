@@ -31,7 +31,8 @@ enum L: String, CaseIterable {
     case notifOffWarning, nextReminder, outsideReminderHours, loadingStretch
 
     case painBeforeTitle, painAfterTitle, nextVideoButton, doneEndEarlyButton, openInYouTubeButton
-    case timerOnlyTitle
+    case timerOnlyTitle, sessionLeft, sessionPaused, sessionExtra, sessionLeftA11y, thisMoveSec
+    case timeUpTitle, timeUpBody, keepGoingButton, finishButton
     case likeVideoA11y, dislikeVideoA11y
 
     case moveCounter, skipThisOneButton, endButton
@@ -51,7 +52,8 @@ enum L: String, CaseIterable {
 
     case settingsNavTitle, sectionReminderHours, stepperStart, stepperEnd, intervalLabel, minUnit
     case sectionGoalPrompts, askDiscomfortToggle
-    case sectionVideoLength, videoLengthLabel
+    case videoLengthLabel, bandOption
+    case bandStandard, bandDeep, bandStandardRange, bandDeepRange
     case modeVideo, modeTimer, timerDurationLabel
     case sectionAppearance, appearanceFooter
     case sectionLanguage, languageFooter
@@ -98,10 +100,10 @@ private let strings: [L: [AppLanguage: String]] = [
     .standUpsToday:        [.en: "stand-ups today", .zh: "今日次數"],
     .dayStreak:            [.en: "day streak", .zh: "連續天數"],
     .minThisWeek:          [.en: "min this week", .zh: "本週分鐘"],
-    .stretchNowButton:     [.en: "Stretch now · %d min", .zh: "現在伸展 · %d 分鐘"],
-    .stretchNowButtonTimer:[.en: "Stretch now · Timer %d min", .zh: "現在伸展 · 計時 %d 分鐘"],
-    .notifOffWarning:      [.en: "Notifications are off — you won't get reminders. Turn them on in Settings",
-                             .zh: "通知未開啟，不會收到休息提醒 — 前往「設定」開啟"],
+    .stretchNowButton:     [.en: "Stretch now · %@", .zh: "現在伸展 · %@"],
+    .stretchNowButtonTimer:[.en: "Stretch now · %d min", .zh: "現在伸展 · %d 分鐘"],
+    .notifOffWarning:      [.en: "Notifications off. Tap to turn on",
+                             .zh: "通知未開啟，點此到設定開啟"],
     .nextReminder:         [.en: "Next reminder: %@", .zh: "下次提醒：%@"],
     .outsideReminderHours: [.en: "Outside reminder hours — adjust in Settings",
                              .zh: "目前不在提醒時段內 — 可在設定調整"],
@@ -113,6 +115,16 @@ private let strings: [L: [AppLanguage: String]] = [
     .doneEndEarlyButton:[.en: "Done / end early", .zh: "完成／提早結束"],
     .openInYouTubeButton:[.en: "Open in YouTube", .zh: "在 YouTube 開啟"],
     .timerOnlyTitle: [.en: "Stretch on your own", .zh: "自主伸展"],
+    .sessionLeft:      [.en: "Time left", .zh: "剩餘時間"],
+    .sessionPaused:    [.en: "Video paused · timer on", .zh: "影片暫停・計時中"],
+    .sessionExtra:     [.en: "Extra time", .zh: "加碼時間"],
+    .sessionLeftA11y:  [.en: "%d minutes %d seconds left", .zh: "剩餘 %d 分 %d 秒"],
+    .thisMoveSec:      [.en: "This move · %ds", .zh: "這個動作 · %d 秒"],
+    .timeUpTitle:      [.en: "Time's up!", .zh: "時間到了！"],
+    .timeUpBody:       [.en: "You've stretched for %d minutes. Keep going or wrap up here?",
+                        .zh: "你已經伸展 %d 分鐘了，要繼續還是先到這裡？"],
+    .keepGoingButton:  [.en: "Keep going", .zh: "繼續伸展"],
+    .finishButton:     [.en: "Finish", .zh: "完成"],
     .likeVideoA11y:    [.en: "Like this video", .zh: "喜歡這支影片"],
     .dislikeVideoA11y: [.en: "Dislike this video", .zh: "不喜歡這支影片"],
 
@@ -158,8 +170,12 @@ private let strings: [L: [AppLanguage: String]] = [
     .minUnit:             [.en: "%d min", .zh: "%d 分鐘"],
     .sectionGoalPrompts:  [.en: "Goal & prompts", .zh: "目標與提示"],
     .askDiscomfortToggle: [.en: "Ask discomfort each time", .zh: "每次都詢問不適度"],
-    .sectionVideoLength: [.en: "Video length", .zh: "影片長度"],
-    .videoLengthLabel:   [.en: "Video length", .zh: "影片長度"],
+    .videoLengthLabel:   [.en: "Stretch length", .zh: "伸展長度"],
+    .bandOption:         [.en: "%@ · %@", .zh: "%@ · %@"],
+    .bandStandard:       [.en: "Standard", .zh: "標準"],
+    .bandDeep:           [.en: "Deep", .zh: "深度"],
+    .bandStandardRange:  [.en: "5 min", .zh: "5 分鐘"],
+    .bandDeepRange:      [.en: "8 min", .zh: "8 分鐘"],
     .modeVideo:          [.en: "Video", .zh: "影片"],
     .modeTimer:          [.en: "Timer", .zh: "計時"],
     .timerDurationLabel: [.en: "Duration", .zh: "時間長度"],
