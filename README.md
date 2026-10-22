@@ -2,17 +2,22 @@
 
 A solo iOS side project by [Sharon Yang](https://github.com/themasteryyw).
 
-Reminds you to stand up every hour and stretch — either a short YouTube
-video matched to whatever body area you're currently sore in, or a
+Reminds you to stand up every hour and stretch, either with a short YouTube
+video matched to whatever body area you're currently sore in, or with a
 self-guided timer if you'd rather not wait on a video. Tracks your streak
 and discomfort over time.
 
 ## Features
 
-- **Two ways to stretch**: a ~5 min YouTube video, or a self-guided timer
-  (drag to pick any length) that vibrates and chimes when it's done.
+- **Two ways to stretch**: a 5 or 8 minute video session (picked on the
+  Today tab), or a self-guided timer (pick any length) that vibrates and
+  chimes when it's done.
+- **One countdown per session**: the timer keeps running across "Next video"
+  and pauses, and a follow-along routine fills any time left after a short
+  video. When time's up, you choose to keep going or finish.
+- **Fullscreen video** with the standard YouTube fullscreen button.
 - **Whole-body targeting**: covers lower back, hips, hamstrings, neck &
-  shoulders, upper back, chest, wrists, quads, and calves/ankles — rotates
+  shoulders, upper back, chest, wrists, quads, and calves/ankles. It rotates
   through a different area each session, and (when discomfort check-ins are
   on) picks a video that actually matches the area just asked about.
 - **Discomfort tracking**: rate how a spot feels before/after each stretch;
@@ -21,19 +26,19 @@ and discomfort over time.
 - **Quick like/dislike** on a video while it's playing, plus an emoji
   reaction after you finish.
 - **Smart reminders**: local notifications only during the hours/days you
-  set, with a rotating bank of varied messages — no network, nothing
-  uploaded. Daily goal is worked out automatically from your reminder
-  schedule.
-- **Fully bilingual** — English and Traditional Chinese, switchable
+  set, drawn from 44 messages with no repeats within a day. No network,
+  nothing uploaded. Daily goal is worked out automatically from your
+  reminder schedule.
+- **Fully bilingual**: English and Traditional Chinese, switchable
   anytime in Settings, no restart needed.
-- **Offline fallback**: no YouTube API key or no network → a built-in
+- **Offline fallback**: with no YouTube API key or no network, a built-in
   timed stretch routine, no internet required.
 - Three theme colors (Morandi / Latte / Pink); the app icon stays fixed
   regardless of theme.
 
 ## Building
 
-### Option A — XcodeGen (recommended)
+### Option A: XcodeGen (recommended)
 
 ```bash
 brew install xcodegen
@@ -49,7 +54,7 @@ certificate under Settings → General → VPN & Device Management.
 > A free Apple ID's sideload certificate expires after 7 days and needs a
 > re-run from Xcode. For longer-term use, distribute via TestFlight.
 
-### Option B — Manual project setup
+### Option B: Manual project setup
 
 Create a new SwiftUI iOS app in Xcode (min iOS 17), drag in everything
 under `Sources/`, and add a `YTAPIKey` string key to the target's Info.
